@@ -85,7 +85,7 @@ class SalesforcesTable extends SalesforceTable
                     } else {
                         $type_name = 'string';
                     }
-                    if($field->updateable) {
+                    if($field->updateable || $field->name == 'Id') {
                         $fields['updatable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
                     }
                     $fields['selectable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
