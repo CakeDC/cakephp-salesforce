@@ -47,9 +47,12 @@ class SalesforceStatement extends StatementDecorator
                 $result->size = 1;
             }
         } else if ($this->_statement->type() == 'insert') {
-            $header = new AssignmentRuleHeader(null, true);	// run the default lead assignment rule
-            $this->_driver->client->setAssignmentRuleHeader($header);
-            $result = $this->_driver->client->create([$this->_buildObjectFromInsert($sql, $bindings)], $this->_statement->repository()->name);
+            $object = $this->_buildObjectFromInsert($sql, $bindings);
+            if (empty($object->OwnerId)) {
+                $header = new AssignmentRuleHeader(null, true);    // run the default lead assignment rule
+                $this->_driver->client->setAssignmentRuleHeader($header);
+            }
+            $result = $this->_driver->client->create([$object], $this->_statement->repository()->name);
             // TODO: Check for errors, e.g. duplicate record notices
             $this->_last_insert_id[$this->_statement->repository()->name] = $result[0]->id;
             if (empty($result->size)) {
