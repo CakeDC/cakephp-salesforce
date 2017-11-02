@@ -48,7 +48,8 @@ class SalesforcesTable extends SalesforceTable
         $mySforceConnection = new \SforceEnterpriseClient();
         $mySforceConnection->createConnection($wsdl);
 
-        $sflogin = (array)Cache::read('salesforce_login', 'salesforce');
+        $cache_key = $config['connection']->config()['name'] . '_login';
+        $sflogin = (array)Cache::read($cache_key, 'salesforce');
         if(!empty($sflogin['sessionId'])) {
             $mySforceConnection->setSessionHeader($sflogin['sessionId']);
             $mySforceConnection->setEndpoint($sflogin['serverUrl']);
@@ -56,7 +57,7 @@ class SalesforcesTable extends SalesforceTable
             try{
                 $mylogin = $mySforceConnection->login($config['connection']->config()['username'],$config['connection']->config()['password']);
                 $sflogin = ['sessionId' => $mylogin->sessionId, 'serverUrl' => $mylogin->serverUrl];
-                Cache::write('salesforce_login', $sflogin, 'salesforce');
+                Cache::write($cache_key, $sflogin, 'salesforce');
             } catch (\Exception $e) {
                 $this->log('Error logging into salesforce from Table - Salesforce down?');
             }
