@@ -29,9 +29,10 @@ trait SalesforceDriverTrait
         }
 
         $mySforceConnection = new \SforceEnterpriseClient();
-        $mySoapClient = $mySforceConnection->createConnection($wsdl);
+        $mySforceConnection->createConnection($wsdl);
 
-        $sflogin = (array)Cache::read('salesforce_login', 'salesforce');
+        $cache_key = $config['name'] . '_login';
+        $sflogin = (array)Cache::read($cache_key, 'salesforce');
 
         if(!empty($sflogin['sessionId'])) {
             $mySforceConnection->setSessionHeader($sflogin['sessionId']);
@@ -40,8 +41,8 @@ trait SalesforceDriverTrait
             try{
                 $mylogin = $mySforceConnection->login($this->config['username'], $this->config['password']);
                 $sflogin = array('sessionId' => $mylogin->sessionId, 'serverUrl' => $mylogin->serverUrl);
-                Cache::write('salesforce_login', $sflogin, 'salesforce');
-            } catch (Exception $e) {
+                Cache::write($cache_key, $sflogin, 'salesforce');
+            } catch (\Exception $e) {
                 $this->log("Error logging into salesforce - Salesforce down?");
                 $this->log("Username: " . $this->config['username']);
                 $this->log("Password: " . $this->config['password']);
