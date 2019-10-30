@@ -1,6 +1,7 @@
 <?php
 namespace Salesforce\Model\Table;
 
+use Cake\Datasource\EntityInterface;
 use Salesforce\Model\Entity\Salesforce;
 use Salesforce\ORM\SalesforceQuery;
 use Salesforce\ORM\SalesforceTable;
@@ -101,6 +102,38 @@ class SalesforcesTable extends SalesforceTable
 
         //Cache select fields right away as most likely need them immediately
         $this->schema($this->_fields['selectable']);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function newEntity($data = null, array $options = []) {
+        $this->schema($this->_fields['creatable']);
+        return parent::newEntity($data, $options);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function newEntities(array $data, array $options = []) {
+        $this->schema($this->_fields['creatable']);
+        return parent::newEntities($data, $options);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function patchEntity(EntityInterface $entity, array $data, array $options = []) {
+        $this->schema($this->_fields['updatable']);
+        return parent::patchEntity($entity, $data, $options);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function patchEntities($entities, array $data, array $options = []) {
+        $this->schema($this->_fields['updatable']);
+        return parent::patchEntities($entities, $data, $options);
     }
 
     public function beforeFind($event, $query, $options, $primary) {
