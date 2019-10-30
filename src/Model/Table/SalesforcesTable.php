@@ -86,6 +86,9 @@ class SalesforcesTable extends SalesforceTable
                     } else {
                         $type_name = 'string';
                     }
+                    if($field->createable || $field->name == 'Id') {
+                        $fields['creatable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
+                    }
                     if($field->updateable || $field->name == 'Id') {
                         $fields['updatable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
                     }
@@ -108,6 +111,10 @@ class SalesforcesTable extends SalesforceTable
         if($options['atomic']) {
             throw new \Exception('Salesforce API does not support atomic transactions; set atomic to false.');
         }
-        $this->schema($this->_fields['updatable']);
+        if ($entity->isNew()) {
+            $this->schema($this->_fields['creatable']);
+        } else {
+            $this->schema($this->_fields['updatable']);
+        }
     }
 }
