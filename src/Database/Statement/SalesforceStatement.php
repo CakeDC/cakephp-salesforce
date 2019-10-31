@@ -41,10 +41,16 @@ class SalesforceStatement extends StatementDecorator
 
         //intercept Update here
         if ($this->_statement->type() == 'update') {
-            $result = $this->_driver->client->update([$this->_buildObjectFromUpdate($sql, $bindings)], $this->_statement->repository()->name);
-            if (empty($result->size)) {
-                $result = (object)json_decode(json_encode($result));
+            $results = $this->_driver->client->update([$this->_buildObjectFromUpdate($sql, $bindings)], $this->_statement->repository()->name);
+            if (is_object($results)) {
+                trigger_error('Unexpected object results', E_USER_ERROR);
+            }
+            $result = new \stdClass();
+            if ($results[0]->success) {
                 $result->size = 1;
+            } else {
+                $result->size = 0;
+                $this->_driver->errors = $results[0]->errors;
             }
         } else if ($this->_statement->type() == 'insert') {
             $object = $this->_buildObjectFromInsert($sql, $bindings);
@@ -52,12 +58,17 @@ class SalesforceStatement extends StatementDecorator
                 $header = new AssignmentRuleHeader(null, true);    // run the default lead assignment rule
                 $this->_driver->client->setAssignmentRuleHeader($header);
             }
-            $result = $this->_driver->client->create([$object], $this->_statement->repository()->name);
-            // TODO: Check for errors, e.g. duplicate record notices
-            $this->_last_insert_id[$this->_statement->repository()->name] = $result[0]->id;
-            if (empty($result->size)) {
-                $result = (object)json_decode(json_encode($result));
+            $results = $this->_driver->client->create([$object], $this->_statement->repository()->name);
+            if (is_object($results)) {
+                trigger_error('Unexpected object results', E_USER_ERROR);
+            }
+            $result = new \stdClass();
+            if ($results[0]->success) {
                 $result->size = 1;
+                $this->_last_insert_id[$this->_statement->repository()->name] = $results[0]->id;
+            } else {
+                $result->size = 0;
+                $this->_driver->errors = $results[0]->errors;
             }
         } else {
             $result = $this->_driver->client->query($this->_interpolate($sql, $bindings));

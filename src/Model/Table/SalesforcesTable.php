@@ -61,6 +61,7 @@ class SalesforcesTable extends SalesforceTable
                 Cache::write($cache_key, $sflogin, 'salesforce');
             } catch (\Exception $e) {
                 $this->log('Error logging into salesforce from Table - Salesforce down?');
+                throw $e;
             }
         }
 

@@ -82,6 +82,15 @@ class SalesforceTable extends Table
                 $entity->isNew(false);
                 $entity->source($this->registryAlias());
             }
+        } else {
+            $errors = $this->connection()->driver()->errors[0];
+            if (!empty($errors->fields)) {
+                $field = $errors->fields[0];
+            } else {
+                // For lack of anything better...
+                $field = 'id';
+            }
+            $entity->errors($field, $errors->message);
         }
 
         return $success;
