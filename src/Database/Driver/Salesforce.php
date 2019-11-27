@@ -46,11 +46,12 @@ class Salesforce extends Driver
         'init' => [],
     ];
 
-    /**
-     * Establishes a connection to the database server
-     *
-     * @return bool true on success
-     */
+	/**
+	 * Establishes a connection to the database server
+	 *
+	 * @return bool true on success
+	 * @throws \ErrorException
+	 */
     public function connect()
     {
         if ($this->_connection) {
@@ -58,7 +59,7 @@ class Salesforce extends Driver
         }
         $config = $this->_config;
 
-        $this->_connect($config);
+        $this->_connect('', $config);
 
         if (!empty($config['init'])) {
             $connection = $this->connection();
@@ -79,12 +80,13 @@ class Salesforce extends Driver
         return true; //Dont know if I need this?
     }
 
-    /**
-     * Prepares a sql statement to be executed
-     *
-     * @param string|\Cake\Database\Query $query The query to prepare.
-     * @return \Cake\Database\StatementInterface
-     */
+	/**
+	 * Prepares a sql statement to be executed
+	 *
+	 * @param string|\Cake\Database\Query $query The query to prepare.
+	 * @return \Cake\Database\StatementInterface
+	 * @throws \ErrorException
+	 */
     public function prepare($query)
     {
         $this->connect();

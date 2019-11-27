@@ -12,13 +12,15 @@ trait SalesforceDriverTrait
     protected $_connection;
     public $config;
 
-    /**
-     * Establishes a connection to the salesforce server
-     *
-     * @param array $config configuration to be used for creating connection
-     * @return bool true on success
-     */
-    protected function _connect(array $config)
+	/**
+	 * Establishes a connection to the salesforce server
+	 *
+	 * @param string $dsn A Driver-specific PDO-DSN
+	 * @param array $config configuration to be used for creating connection
+	 * @return bool true on success
+	 * @throws \ErrorException
+	 */
+    protected function _connect($dns, array $config)
     {
         $this->config = $config;
 
