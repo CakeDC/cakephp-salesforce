@@ -154,6 +154,9 @@ class SalesforceStatement extends StatementDecorator
             case 'date':
                 $ret = (string)$binding['value'];
                 break;
+            case 'string':
+                $ret = trim($binding['value']);
+                break;
             default:
                 $ret = addslashes(trim($binding['value']));
                 break;

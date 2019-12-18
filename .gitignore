@@ -1,0 +1,8 @@
+/vendor/*
+/config/.env
+/config/.env_test
+/tmp/*
+/logs/*
+/.idea
+.DS_Store
+phpunit.xml
