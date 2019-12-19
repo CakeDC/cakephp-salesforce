@@ -108,11 +108,21 @@ class SalesforceStatement extends StatementDecorator
         preg_match('/UPDATE .* SET (.*) WHERE (.*)/', $sql, $parts);
         $cleanedSQL = explode(' , ', $parts[1]);
         $cleanedSQL[] = $parts[2];
-        $newSQL = [];
+        $newSQL = ['fieldsToNull'=>[]];
         foreach ($cleanedSQL as $row) {
-            $string = explode(' = ', $row);
-            $newSQL[trim($string[0])] = $this->_replacement($bindings[trim($string[1])]);
+            list($fieldName, $value) = explode(' = ', $row);
+            $fieldName = trim($fieldName);
+            $value = $this->_replacement($bindings[trim($value)]);
+            if ($value === '') {
+            	$newSQL['fieldsToNull'][] = $fieldName;
+			} else {
+				$newSQL[$fieldName] = $value;
+			}
         }
+
+        if(count($newSQL['fieldsToNull']) === 0) {
+        	unset($newSQL['fieldsToNull']);
+		}
 
         //return as object
         return (object)$newSQL;
