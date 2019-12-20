@@ -13,6 +13,11 @@ trait SalesforceDriverTrait
     public $config;
 
 	/**
+	 * @var \SforceEnterpriseClient
+	 */
+    public $client;
+
+	/**
 	 * Establishes a connection to the salesforce server
 	 *
 	 * @param string $dsn A Driver-specific PDO-DSN

@@ -20,6 +20,7 @@ use Cake\Database\Statement\StatementDecorator;
 /**
  * Statement class meant to be used by a Mysql PDO driver
  *
+ * @property \Cake\Database\Driver|\Salesforce\Database\Driver\SalesforceDriverTrait $_driver
  * @internal
  */
 class SalesforceStatement extends StatementDecorator {
@@ -86,7 +87,13 @@ class SalesforceStatement extends StatementDecorator {
 				throw new \Exception('Unsupported delete query. Only where ID clauses are supported');
 			}
 		} else {
-			$result = $this->_driver->client->query($this->_interpolate($sql, $bindings));
+			// Use epilog('@queryAll') with CakePHP's query build to include deleted records.
+			if (substr($sql, -10) === ' @queryAll') {
+				$sql = substr($sql, 0, strlen($sql) - 10);
+				$result = $this->_driver->client->queryAll($this->_interpolate($sql, $bindings));
+			} else {
+				$result = $this->_driver->client->query($this->_interpolate($sql, $bindings));
+			}
 		}
 
 		$this->last_rows_affected = $result->size;
