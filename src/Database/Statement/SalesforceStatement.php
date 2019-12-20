@@ -16,244 +16,249 @@ namespace Salesforce\Database\Statement;
 
 use AssignmentRuleHeader;
 use Cake\Database\Statement\StatementDecorator;
-use Cake\Database\ValueBinder;
+
 /**
  * Statement class meant to be used by a Mysql PDO driver
  *
  * @internal
  */
-class SalesforceStatement extends StatementDecorator
-{
+class SalesforceStatement extends StatementDecorator {
 
-    protected $last_rows_affected = 0;
-    protected $last_result; //pretty sure this is awful!
-    protected $last_row_returned = 0;
-    private $_last_insert_id = [];
+	protected $last_rows_affected = 0;
+	protected $last_result; //pretty sure this is awful!
+	protected $last_row_returned = 0;
+	private $_last_insert_id = [];
 
-    /**
-     * {@inheritDoc}
-     *
-     */
-    public function execute($params = null)
-    {
-        $sql = $this->_statement->sql();
-        $bindings = $this->_statement->valueBinder()->bindings();
+	/**
+	 * {@inheritDoc}
+	 *
+	 */
+	public function execute($params = null) {
+		$sql = $this->_statement->sql();
+		$bindings = $this->_statement->valueBinder()->bindings();
 
-        //intercept Update here
-        if ($this->_statement->type() == 'update') {
-            $results = $this->_driver->client->update([$this->_buildObjectFromUpdate($sql, $bindings)], $this->_statement->repository()->name);
-            if (is_object($results)) {
-                trigger_error('Unexpected object results', E_USER_ERROR);
-            }
-            $result = new \stdClass();
-            if ($results[0]->success) {
-                $result->size = 1;
-            } else {
-                $result->size = 0;
-                $this->_driver->errors = $results[0]->errors;
-            }
-        } else if ($this->_statement->type() == 'insert') {
-            $object = $this->_buildObjectFromInsert($sql, $bindings);
-            if (empty($object->OwnerId)) {
-                $header = new AssignmentRuleHeader(null, true);    // run the default lead assignment rule
-                $this->_driver->client->setAssignmentRuleHeader($header);
-            }
-            $results = $this->_driver->client->create([$object], $this->_statement->repository()->name);
-            if (is_object($results)) {
-                trigger_error('Unexpected object results', E_USER_ERROR);
-            }
-            $result = new \stdClass();
-            if ($results[0]->success) {
-                $result->size = 1;
-                $this->_last_insert_id[$this->_statement->repository()->name] = $results[0]->id;
-            } else {
-                $result->size = 0;
-                $this->_driver->errors = $results[0]->errors;
-            }
-        } else {
-            $result = $this->_driver->client->query($this->_interpolate($sql, $bindings));
-        }
+		//intercept Update here
+		if ($this->_statement->type() == 'update') {
+			$results = $this->_driver->client->update([$this->_buildObjectFromUpdate($sql, $bindings)], $this->_statement->repository()->name);
+			if (is_object($results)) {
+				trigger_error('Unexpected object results', E_USER_ERROR);
+			}
+			$result = new \stdClass();
+			if ($results[0]->success) {
+				$result->size = 1;
+			} else {
+				$result->size = 0;
+				$this->_driver->errors = $results[0]->errors;
+			}
+		} else if ($this->_statement->type() == 'insert') {
+			$object = $this->_buildObjectFromInsert($sql, $bindings);
+			if (empty($object->OwnerId)) {
+				$header = new AssignmentRuleHeader(null, true);    // run the default lead assignment rule
+				$this->_driver->client->setAssignmentRuleHeader($header);
+			}
+			$results = $this->_driver->client->create([$object], $this->_statement->repository()->name);
+			if (is_object($results)) {
+				trigger_error('Unexpected object results', E_USER_ERROR);
+			}
+			$result = new \stdClass();
+			if ($results[0]->success) {
+				$result->size = 1;
+				$this->_last_insert_id[$this->_statement->repository()->name] = $results[0]->id;
+			} else {
+				$result->size = 0;
+				$this->_driver->errors = $results[0]->errors;
+			}
+		} else if ($this->_statement->type() == 'delete') {
+			if (count($bindings) == 1 && preg_match('/DELETE FROM .* WHERE Id = :c0/', $sql)) {
+				$id = $bindings[':c0']['value'];
+				$results = $this->_driver->client->delete([$id]);
+				if (is_object($results)) {
+					trigger_error('Unexpected object results', E_USER_ERROR);
+				}
+				$result = new \stdClass();
+				if ($results[0]->success) {
+					$result->size = 1;
+				} else {
+					$result->size = 0;
+					$this->_driver->errors = $results[0]->errors;
+				}
+			} else {
+				throw new \Exception('Unsupported delete query. Only where ID clauses are supported');
+			}
+		} else {
+			$result = $this->_driver->client->query($this->_interpolate($sql, $bindings));
+		}
 
-        $this->last_rows_affected = $result->size;
-        $this->last_result = $result;
-        return $result;
-    }
+		$this->last_rows_affected = $result->size;
+		$this->last_result = $result;
+		return $result;
+	}
 
-    /**
-     * Helper function used to replace query placeholders by the real
-     * params used to execute the query.
-     *
-     * @param string $sql The sql query
-     * @param array $bindings List of placeholder replacement values
-     * @return string
-     */
-    protected function _interpolate($sql, $bindings)
-    {
-        foreach ($bindings as $binding) {
-            $sql = preg_replace('/:'.$binding['placeholder'].'\b/i', $this->_replacement($binding, true), $sql);
-        }
-
-        return $sql;
-    }
-
-    /**
-     * Helper function used to build an sObject from an update query.
-     *
-     * @param string $sql The sql query
-     * @param array $bindings List of placeholder replacement values
-     * @return mixed
-     */
-    protected function _buildObjectFromUpdate($sql, $bindings)
-    {
-        preg_match('/UPDATE .* SET (.*) WHERE (.*)/', $sql, $parts);
-        $cleanedSQL = explode(' , ', $parts[1]);
-        $cleanedSQL[] = $parts[2];
-        $newSQL = ['fieldsToNull'=>[]];
-        foreach ($cleanedSQL as $row) {
-            list($fieldName, $value) = explode(' = ', $row);
-            $fieldName = trim($fieldName);
-            $value = $this->_replacement($bindings[trim($value)]);
-            if ($value === '') {
-            	$newSQL['fieldsToNull'][] = $fieldName;
+	/**
+	 * Helper function used to build an sObject from an update query.
+	 *
+	 * @param string $sql The sql query
+	 * @param array $bindings List of placeholder replacement values
+	 * @return mixed
+	 */
+	protected function _buildObjectFromUpdate($sql, $bindings) {
+		preg_match('/UPDATE .* SET (.*) WHERE (.*)/', $sql, $parts);
+		$cleanedSQL = explode(' , ', $parts[1]);
+		$cleanedSQL[] = $parts[2];
+		$newSQL = ['fieldsToNull' => []];
+		foreach ($cleanedSQL as $row) {
+			[$fieldName, $value] = explode(' = ', $row);
+			$fieldName = trim($fieldName);
+			$value = $this->_replacement($bindings[trim($value)]);
+			if ($value === '') {
+				$newSQL['fieldsToNull'][] = $fieldName;
 			} else {
 				$newSQL[$fieldName] = $value;
 			}
-        }
-
-        if(count($newSQL['fieldsToNull']) === 0) {
-        	unset($newSQL['fieldsToNull']);
 		}
 
-        //return as object
-        return (object)$newSQL;
-    }
+		if (count($newSQL['fieldsToNull']) === 0) {
+			unset($newSQL['fieldsToNull']);
+		}
 
-    /**
-     * Helper function used to build an sObject from an insert query.
-     *
-     * @param string $sql The sql query
-     * @param array $bindings List of placeholder replacement values
-     * @return mixed
-     */
-    protected function _buildObjectFromInsert($sql, $bindings)
-    {
-        preg_match('/\((.*)\) VALUES \((.*)\)/', $sql, $blobs);
-        $fields = explode(', ', $blobs[1]);
-        $placeholders = explode(', ', $blobs[2]);
-        $newSQL = [];
-        foreach ($fields as $key => $field) {
-            $newSQL[$field] = $this->_replacement($bindings[$placeholders[$key]]);
-        }
+		//return as object
+		return (object)$newSQL;
+	}
 
-        //remove empty / null values
-        $newSQL = array_filter($newSQL, 'strlen');
+	protected function _replacement($binding, $quote = false) {
+		switch ($binding['type']) {
+			case 'integer':
+			case 'boolean':
+				return (int)$binding['value'];
+			case 'float':
+				return (float)$binding['value'];
+			case 'datetime':
+			case 'date':
+				$ret = (string)$binding['value'];
+				break;
+			case 'string':
+				$ret = trim($binding['value']);
+				break;
+			default:
+				$ret = addslashes(trim($binding['value']));
+				break;
+		}
+		if ($quote) {
+			return "'$ret'";
+		}
+		return $ret;
+	}
 
-        //return as object
-        return (object)$newSQL;
-    }
+	/**
+	 * Helper function used to build an sObject from an insert query.
+	 *
+	 * @param string $sql The sql query
+	 * @param array $bindings List of placeholder replacement values
+	 * @return mixed
+	 */
+	protected function _buildObjectFromInsert($sql, $bindings) {
+		preg_match('/\((.*)\) VALUES \((.*)\)/', $sql, $blobs);
+		$fields = explode(', ', $blobs[1]);
+		$placeholders = explode(', ', $blobs[2]);
+		$newSQL = [];
+		foreach ($fields as $key => $field) {
+			$newSQL[$field] = $this->_replacement($bindings[$placeholders[$key]]);
+		}
 
-    protected function _replacement($binding, $quote = false)
-    {
-        switch ($binding['type']) {
-            case 'integer':
-            case 'boolean':
-                return (int)$binding['value'];
-            case 'float':
-                return (float)$binding['value'];
-            case 'datetime':
-            case 'date':
-                $ret = (string)$binding['value'];
-                break;
-            case 'string':
-                $ret = trim($binding['value']);
-                break;
-            default:
-                $ret = addslashes(trim($binding['value']));
-                break;
-        }
-        if ($quote) {
-            return "'$ret'";
-        }
-        return $ret;
-    }
+		//remove empty / null values
+		$newSQL = array_filter($newSQL, 'strlen');
 
-    public function rowCount()
-    {
-       return $this->last_rows_affected;
-    }
+		//return as object
+		return (object)$newSQL;
+	}
 
-    /**
-     * Returns the next row for the result set after executing this statement.
-     * Rows can be fetched to contain columns as names or positions. If no
-     * rows are left in result set, this method will return false
-     *
-     * ### Example:
-     *
-     * ```
-     *  $statement = $connection->prepare('SELECT id, title from articles');
-     *  $statement->execute();
-     *  print_r($statement->fetch('assoc')); // will show ['id' => 1, 'title' => 'a title']
-     * ```
-     *
-     * @param string $type 'num' for positional columns, 'assoc' for named columns
-     * @return mixed Result array containing columns and values or false if no results
-     * are left
-     */
-    public function fetch($type = 'num')
-    {
-        if ($type === 'num') {
-            $result = (array)$this->last_result->records[$this->last_row_returned];
-        }
-        if ($type === 'assoc') {
-            $result = (array)$this->last_result->records[$this->last_row_returned];
-        }
+	/**
+	 * Helper function used to replace query placeholders by the real
+	 * params used to execute the query.
+	 *
+	 * @param string $sql The sql query
+	 * @param array $bindings List of placeholder replacement values
+	 * @return string
+	 */
+	protected function _interpolate($sql, $bindings) {
+		foreach ($bindings as $binding) {
+			$sql = preg_replace('/:' . $binding['placeholder'] . '\b/i', $this->_replacement($binding, true), $sql);
+		}
 
-        $this->last_row_returned++;
-        return $result;
-    }
+		return $sql;
+	}
 
-    /**
-     * Returns the error code for the last error that occurred when executing this statement.
-     *
-     * @return int|string
-     */
-    public function errorCode()
-    {
-        return '00000';
-    }
+	public function rowCount() {
+		return $this->last_rows_affected;
+	}
 
-    /**
-     * Returns the error information for the last error that occurred when executing
-     * this statement.
-     *
-     * @return array
-     */
-    public function errorInfo()
-    {
-        return 'Salesforce Datasource doesnt produce PDO error codes - exceptions are usually thrown';
-    }
+	/**
+	 * Returns the next row for the result set after executing this statement.
+	 * Rows can be fetched to contain columns as names or positions. If no
+	 * rows are left in result set, this method will return false
+	 *
+	 * ### Example:
+	 *
+	 * ```
+	 *  $statement = $connection->prepare('SELECT id, title from articles');
+	 *  $statement->execute();
+	 *  print_r($statement->fetch('assoc')); // will show ['id' => 1, 'title' => 'a title']
+	 * ```
+	 *
+	 * @param string $type 'num' for positional columns, 'assoc' for named columns
+	 * @return mixed Result array containing columns and values or false if no results
+	 * are left
+	 */
+	public function fetch($type = 'num') {
+		if ($type === 'num') {
+			$result = (array)$this->last_result->records[$this->last_row_returned];
+		}
+		if ($type === 'assoc') {
+			$result = (array)$this->last_result->records[$this->last_row_returned];
+		}
 
-    /**
-     * Closes a cursor in the database, freeing up any resources and memory
-     * allocated to it. In most cases you don't need to call this method, as it is
-     * automatically called after fetching all results from the result set.
-     *
-     * @return void
-     */
-    public function closeCursor()
-    {
-        return true;
-    }
+		$this->last_row_returned++;
+		return $result;
+	}
 
-    /**
-     * Returns the latest primary inserted using this statement.
-     *
-     * @param string|null $table table name or sequence to get last insert value from
-     * @param string|null $column the name of the column representing the primary key
-     * @return string
-     */
-    public function lastInsertId($table = null, $column = null)
-    {
-        return $this->_last_insert_id[$table];
-    }
+	/**
+	 * Returns the error code for the last error that occurred when executing this statement.
+	 *
+	 * @return int|string
+	 */
+	public function errorCode() {
+		return '00000';
+	}
+
+	/**
+	 * Returns the error information for the last error that occurred when executing
+	 * this statement.
+	 *
+	 * @return array
+	 */
+	public function errorInfo() {
+		return 'Salesforce Datasource doesnt produce PDO error codes - exceptions are usually thrown';
+	}
+
+	/**
+	 * Closes a cursor in the database, freeing up any resources and memory
+	 * allocated to it. In most cases you don't need to call this method, as it is
+	 * automatically called after fetching all results from the result set.
+	 *
+	 * @return void
+	 */
+	public function closeCursor() {
+		return true;
+	}
+
+	/**
+	 * Returns the latest primary inserted using this statement.
+	 *
+	 * @param string|null $table table name or sequence to get last insert value from
+	 * @param string|null $column the name of the column representing the primary key
+	 * @return string
+	 */
+	public function lastInsertId($table = null, $column = null) {
+		return $this->_last_insert_id[$table];
+	}
 }
