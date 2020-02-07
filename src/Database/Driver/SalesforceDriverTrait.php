@@ -50,9 +50,9 @@ trait SalesforceDriverTrait
                 $sflogin = array('sessionId' => $mylogin->sessionId, 'serverUrl' => $mylogin->serverUrl);
                 Cache::write($cache_key, $sflogin, 'salesforce');
             } catch (\Exception $e) {
-                $this->log("Error logging into salesforce - Salesforce down?");
-                $this->log("Username: " . $this->config['username']);
-                $this->log("Password: " . $this->config['password']);
+                \Cake\Cake\Log::write('error', "Error logging into salesforce - Salesforce down?");
+                \Cake\Cake\Log::write('error', "Username: " . $this->config['username']);
+                \Cake\Cake\Log::write('error', "Password: " . $this->config['password']);
             }
         }
 
