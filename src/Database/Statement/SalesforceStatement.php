@@ -37,6 +37,7 @@ class SalesforceStatement extends StatementDecorator {
 	public function execute($params = null) {
 		$sql = $this->_statement->sql();
 		$bindings = $this->_statement->valueBinder()->bindings();
+		$this->_driver->errors = null;
 
 		//intercept Update here
 		if ($this->_statement->type() == 'update') {
@@ -234,6 +235,9 @@ class SalesforceStatement extends StatementDecorator {
 	 * @return int|string
 	 */
 	public function errorCode() {
+		if (!empty($this->_driver->errors)) {
+			return $this->_driver->errors[0]->statusCode;
+		}
 		return '00000';
 	}
 
@@ -244,6 +248,9 @@ class SalesforceStatement extends StatementDecorator {
 	 * @return array
 	 */
 	public function errorInfo() {
+		if (!empty($this->_driver->errors)) {
+			return $this->_driver->errors[0]->message;
+		}
 		return 'Salesforce Datasource doesnt produce PDO error codes - exceptions are usually thrown';
 	}
 
