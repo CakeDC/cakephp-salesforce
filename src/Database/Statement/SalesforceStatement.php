@@ -135,8 +135,9 @@ class SalesforceStatement extends StatementDecorator {
 
 	protected function _replacement($binding, $quote = false) {
 		switch ($binding['type']) {
-			case 'integer':
 			case 'boolean':
+				return $binding['value'] ? 'true' : 'false';
+			case 'integer':
 				return (int)$binding['value'];
 			case 'float':
 				return (float)$binding['value'];
