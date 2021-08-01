@@ -12,11 +12,13 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database\Schema;
 
 use Cake\Database\Exception;
 use Cake\Database\Schema\Collection;
 use Cake\Database\Schema\Table;
+use Cake\Database\Schema\TableSchemaInterface;
 use Cake\Datasource\ConnectionInterface;
 use PDOException;
 
@@ -34,7 +36,7 @@ class SalesforceCollection extends Collection
      *
      * @return array The list of tables in the connected database/schema.
      */
-    public function listTables()
+    public function listTables(): array
     {
         list($sql, $params) = $this->_dialect->listTables($this->_connection->config());
         $result = [];
@@ -59,16 +61,17 @@ class SalesforceCollection extends Collection
      *
      * @param string $name The name of the table to describe.
      * @param array $options The options to use, see above.
-     * @return \Cake\Database\Schema\Table Object with column metadata.
+     * @return \Cake\Database\Schema\TableSchemaInterface Object with column metadata.
      * @throws \Cake\Database\Exception when table cannot be described.
      */
-    public function describe($name, array $options = [])
+    public function describe($name, array $options = []): TableSchemaInterface
     {
         $config = $this->_connection->config();
         if (strpos($name, '.')) {
             list($config['schema'], $name) = explode('.', $name);
         }
-        $table = new Table($name);
+        $table = $this->_connection->getDriver()
+                                   ->newTableSchema($name);
 
         $schema = $this->_dialect->describeColumn($name, $config);
 

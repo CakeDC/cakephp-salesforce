@@ -1,4 +1,5 @@
 <?php
+
 namespace Salesforce\Model\Entity;
 
 use Cake\ORM\Entity;

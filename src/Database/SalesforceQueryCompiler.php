@@ -12,6 +12,7 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database;
 
 use Cake\Database\Query;
@@ -26,19 +27,24 @@ use Cake\Database\ValueBinder;
 class SalesforceQueryCompiler extends QueryCompiler
 {
     /**
-     * Helper function used to build the string representation of a SELECT clause,
-     * it constructs the field list taking care of aliasing and
-     * converting expression objects to string. This function also constructs the
-     * DISTINCT clause for the query. This has been modified to allow it to support Salesforce
-     *
-     * @param array $parts list of fields to be transformed to string
-     * @param \Cake\Database\Query $query The query that is being compiled
-     * @param \Cake\Database\ValueBinder $generator the placeholder generator to be used in expressions
-     * @return string
+     * {@inheritDoc}
      */
-    protected function _buildSelectPart($parts, $query, $generator)
+    public function compile(Query $query, ValueBinder $binder): string
     {
-        $driver = $query->connection()->driver();
+        $sql = '';
+        $type = $query->type();
+        $query->traverseParts($this->_sqlCompiler($sql, $query, $binder), $this->{'_' . $type . 'Parts'});
+
+        return $sql;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _buildSelectPart(array $parts, Query $query, ValueBinder $binder): string
+    {
+        $driver = $query->getConnection()
+                        ->getDriver();
         $select = 'SELECT %s%s%s';
         if ($this->_orderedUnion && $query->clause('union')) {
             $select = '(SELECT %s%s%s';
@@ -47,7 +53,7 @@ class SalesforceQueryCompiler extends QueryCompiler
         $modifiers = $query->clause('modifier') ?: null;
 
         $normalized = [];
-        $parts = $this->_stringifyExpressions($parts, $generator);
+        $parts = $this->_stringifyExpressions($parts, $binder);
         foreach ($parts as $k => $p) {
             if (!is_numeric($k)) {
                 $p = $p; //Leave it alone
@@ -60,33 +66,14 @@ class SalesforceQueryCompiler extends QueryCompiler
         }
 
         if (is_array($distinct)) {
-            $distinct = $this->_stringifyExpressions($distinct, $generator);
+            $distinct = $this->_stringifyExpressions($distinct, $binder);
             $distinct = sprintf('DISTINCT ON (%s) ', implode(', ', $distinct));
         }
         if ($modifiers !== null) {
-            $modifiers = $this->_stringifyExpressions($modifiers, $generator);
+            $modifiers = $this->_stringifyExpressions($modifiers, $binder);
             $modifiers = implode(' ', $modifiers) . ' ';
         }
 
         return sprintf($select, $distinct, $modifiers, implode(', ', $normalized));
-    }
-
-    /**
-     * Returns the SQL representation of the provided query after generating
-     * the placeholders for the bound values using the provided generator
-     *
-     * @param \Cake\Database\Query $query The query that is being compiled
-     * @param \Cake\Database\ValueBinder $generator the placeholder generator to be used in expressions
-     * @return \Closure
-     */
-	public function compile(Query $query, ValueBinder $generator)
-    {
-        $sql = '';
-        $type = $query->type();
-        $query->traverse(
-            $this->_sqlCompiler($sql, $query, $generator),
-            $this->{'_' . $type . 'Parts'}
-        );
-        return $sql;
     }
 }

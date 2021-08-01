@@ -12,9 +12,12 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database\Driver;
 
 use Cake\Database\Query;
+use Cake\Database\QueryCompiler;
+use Cake\Database\StatementInterface;
 use Cake\Database\ValueBinder;
 use Salesforce\Database\Dialect\SalesforceDialectTrait;
 use Salesforce\Database\Driver\SalesforceDriverTrait;
@@ -46,13 +49,42 @@ class Salesforce extends Driver
         'init' => [],
     ];
 
-	/**
-	 * Establishes a connection to the database server
-	 *
-	 * @return bool true on success
-	 * @throws \ErrorException
-	 */
-    public function connect()
+    /**
+     * Returns whether php is able to use this driver for connecting to database
+     *
+     * @return bool true if it is valid to use this driver
+     */
+    public function enabled(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Prepares a sql statement to be executed
+     *
+     * @param string|\Cake\Database\Query $query The query to prepare.
+     * @return \Cake\Database\StatementInterface
+     * @throws \ErrorException
+     */
+    public function prepare($query): StatementInterface
+    {
+        $this->connect();
+        $isObject = $query instanceof SalesforceQuery;
+        //$statement = $this->_connection->prepare($isObject ? $query->sql() : $query);
+        $result = new SalesforceStatement($query, $this);
+        if ($isObject && $query->isBufferedResultsEnabled() === false) {
+            $result->bufferResults(false);
+        }
+        return $result;
+    }
+
+    /**
+     * Establishes a connection to the database server
+     *
+     * @return bool true on success
+     * @throws \ErrorException
+     */
+    public function connect(): bool
     {
         if ($this->_connection) {
             return true;
@@ -71,50 +103,11 @@ class Salesforce extends Driver
     }
 
     /**
-     * Returns whether php is able to use this driver for connecting to database
-     *
-     * @return bool true if it is valid to use this driver
-     */
-    public function enabled()
-    {
-        return true; //Dont know if I need this?
-    }
-
-	/**
-	 * Prepares a sql statement to be executed
-	 *
-	 * @param string|\Cake\Database\Query $query The query to prepare.
-	 * @return \Cake\Database\StatementInterface
-	 * @throws \ErrorException
-	 */
-    public function prepare($query)
-    {
-        $this->connect();
-        $isObject = $query instanceof SalesforceQuery;
-        //$statement = $this->_connection->prepare($isObject ? $query->sql() : $query);
-        $result = new SalesforceStatement($query, $this);
-        if ($isObject && $query->bufferResults() === false) {
-            $result->bufferResults(false);
-        }
-        return $result;
-    }
-
-    /**
      * {@inheritDoc}
      */
-    public function supportsDynamicConstraints()
+    public function supportsDynamicConstraints(): bool
     {
         return true;
-    }
-
-    /**
-     * Returns an instance of a QueryCompiler
-     *
-     * @return \Cake\Database\QueryCompiler
-     */
-    public function newCompiler()
-    {
-        return new SalesforceQueryCompiler;
     }
 
     /**
@@ -126,11 +119,21 @@ class Salesforce extends Driver
      * @return array containing 2 entries. The first entity is the transformed query
      * and the second one the compiled SQL
      */
-    public function compileQuery(Query $query, ValueBinder $generator)
+    public function compileQuery(Query $query, ValueBinder $generator): array
     {
         $processor = $this->newCompiler();
         $translator = $this->queryTranslator($query->type());
         $query = $translator($query);
         return [$query, $processor->compile($query, $generator)];
+    }
+
+    /**
+     * Returns an instance of a QueryCompiler
+     *
+     * @return SalesforceQueryCompiler
+     */
+    public function newCompiler(): QueryCompiler
+    {
+        return new SalesforceQueryCompiler();
     }
 }

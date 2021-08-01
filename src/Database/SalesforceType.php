@@ -12,9 +12,11 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database;
 
 use Cake\Database\Type;
+use Cake\Database\TypeInterface;
 use InvalidArgumentException;
 
 /**
@@ -63,13 +65,9 @@ class SalesforceType extends Type
     ];
 
     /**
-     * Returns a Type object capable of converting a type identified by $name
-     *
-     * @param string $name type identifier
-     * @throws \InvalidArgumentException If type identifier is unknown
-     * @return Type
+     * {@inheritDoc}
      */
-    public static function build($name)
+    public static function build(string $name): TypeInterface
     {
         //force rebuild of string type
         if ($name != "string") {

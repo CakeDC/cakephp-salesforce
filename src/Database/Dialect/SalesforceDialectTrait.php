@@ -12,6 +12,7 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database\Dialect;
 
 use Salesforce\Database\Schema\SalesforceSchema;

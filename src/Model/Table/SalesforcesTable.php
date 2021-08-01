@@ -1,7 +1,12 @@
 <?php
+
 namespace Salesforce\Model\Table;
 
+use ArrayObject;
 use Cake\Datasource\EntityInterface;
+use Cake\Event\Event;
+use Cake\ORM\Query;
+use Exception;
 use Salesforce\Model\Entity\Salesforce;
 use Salesforce\ORM\SalesforceQuery;
 use Salesforce\ORM\SalesforceTable;
@@ -21,80 +26,94 @@ class SalesforcesTable extends SalesforceTable
 
     private $_fields = [];
 
-    public static function defaultConnectionName() {
+    public static function defaultConnectionName(): string
+    {
         return 'salesforce';
     }
 
     /**
      * Initialize method
      *
-     * @param  array $config The configuration for the Table.
+     * @param array $config The configuration for the Table.
      * @return void
-     * @throws \Exception
+     * @throws Exception
      */
-    public function initialize(array $config)
+    public function initialize(array $config): void
     {
         parent::initialize($config);
 
-        $this->table(false);
-        $this->displayField('Id');
-        $this->primaryKey('Id');
+        $this->setTable('');
+        $this->setDisplayField('Id');
+        $this->setPrimaryKey('Id');
 
-        if(!empty($config['connection']->config()['my_wsdl'])) {
-            $wsdl = CONFIG . DS  . $config['connection']->config()['my_wsdl'];
+        if (!empty($config['connection']->config()['my_wsdl'])) {
+            $wsdl = CONFIG . DS . $config['connection']->config()['my_wsdl'];
         } else {
-            throw new \Exception('You need to provide a WSDL');
+            throw new Exception('You need to provide a WSDL');
         }
 
         $mySforceConnection = new \SforceEnterpriseClient();
         $mySforceConnection->createConnection($wsdl);
 
         $cache_key = $config['connection']->config()['name'] . '_login';
-        $sflogin = (array)Cache::read($cache_key, 'salesforce');
-        if(!empty($sflogin['sessionId'])) {
-            $mySforceConnection->setSessionHeader($sflogin['sessionId']);
-            $mySforceConnection->setEndpoint($sflogin['serverUrl']);
+        $sfLogin = (array)Cache::read($cache_key, 'salesforce');
+        if (!empty($sfLogin['sessionId'])) {
+            $mySforceConnection->setSessionHeader($sfLogin['sessionId']);
+            $mySforceConnection->setEndpoint($sfLogin['serverUrl']);
         } else {
-            try{
-                $mylogin = $mySforceConnection->login($config['connection']->config()['username'],$config['connection']->config()['password']);
-                $sflogin = ['sessionId' => $mylogin->sessionId, 'serverUrl' => $mylogin->serverUrl];
-                Cache::write($cache_key, $sflogin, 'salesforce');
-            } catch (\Exception $e) {
+            try {
+                $myLogin = $mySforceConnection->login($config['connection']->config()['username'],
+                    $config['connection']->config()['password']);
+                $sfLogin = ['sessionId' => $myLogin->sessionId, 'serverUrl' => $myLogin->serverUrl];
+                Cache::write($cache_key, $sfLogin, 'salesforce');
+            } catch (Exception $e) {
                 $this->log('Error logging into salesforce from Table - Salesforce down?');
                 throw $e;
             }
         }
 
-        if (!$sObject = Cache::read($this->name.'_sObject', 'salesforce')) {
+        if (!$sObject = Cache::read($this->name . '_sObject', 'salesforce')) {
             $sObject = $mySforceConnection->describeSObject($this->name);
-            Cache::write($this->name.'_sObject', $sObject, 'salesforce');
+            Cache::write($this->name . '_sObject', $sObject, 'salesforce');
         }
 
-        $this->_fields = Cache::remember($this->name.'_schema', function () use ($sObject) {
+        $this->_fields = Cache::remember($this->name . '_schema', function () use ($sObject) {
             $fields = [];
 
             foreach ($sObject->fields as $field) {
-                if(substr($field->soapType,0,3) != 'ens') { //we dont want type of ens
-                    if(substr($field->soapType,4) == 'int') {
+                if (substr($field->soapType, 0, 3) != 'ens') { //we dont want type of ens
+                    if (substr($field->soapType, 4) == 'int') {
                         $type_name = 'integer';
-                    } elseif (substr($field->soapType,4) == 'double') {
+                    } elseif (substr($field->soapType, 4) == 'double') {
                         $type_name = 'float';
-                    } elseif (substr($field->soapType,4) == 'boolean') {
+                    } elseif (substr($field->soapType, 4) == 'boolean') {
                         $type_name = 'boolean';
-                    } elseif (substr($field->soapType,4) == 'dateTime') {
+                    } elseif (substr($field->soapType, 4) == 'dateTime') {
                         $type_name = 'datetime';
-                    } elseif (substr($field->soapType,4) == 'date') {
+                    } elseif (substr($field->soapType, 4) == 'date') {
                         $type_name = 'date';
                     } else {
                         $type_name = 'string';
                     }
-                    if($field->createable || $field->name == 'Id') {
-                        $fields['creatable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
+                    if ($field->createable || $field->name == 'Id') {
+                        $fields['creatable'][$field->name] = [
+                            'type' => $type_name,
+                            'length' => $field->length,
+                            'null' => $field->nillable
+                        ];
                     }
-                    if($field->updateable || $field->name == 'Id') {
-                        $fields['updatable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
+                    if ($field->updateable || $field->name == 'Id') {
+                        $fields['updatable'][$field->name] = [
+                            'type' => $type_name,
+                            'length' => $field->length,
+                            'null' => $field->nillable
+                        ];
                     }
-                    $fields['selectable'][$field->name] = ['type' => $type_name, 'length' => $field->length, 'null' => $field->nillable];
+                    $fields['selectable'][$field->name] = [
+                        'type' => $type_name,
+                        'length' => $field->length,
+                        'null' => $field->nillable
+                    ];
                 }
             }
 
@@ -102,53 +121,72 @@ class SalesforcesTable extends SalesforceTable
         }, 'salesforce');
 
         //Cache select fields right away as most likely need them immediately
-        $this->schema($this->_fields['selectable']);
+        $this->setSchema($this->_fields['selectable']);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function newEntity($data = null, array $options = []) {
-        $this->schema($this->_fields['creatable']);
+    public function newEntity(array $data, array $options = []): EntityInterface
+    {
+        $this->setSchema($this->_fields['creatable']);
+
         return parent::newEntity($data, $options);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function newEntities(array $data, array $options = []) {
-        $this->schema($this->_fields['creatable']);
+    public function newEntities(array $data, array $options = []): array
+    {
+        $this->setSchema($this->_fields['creatable']);
+
         return parent::newEntities($data, $options);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function patchEntity(EntityInterface $entity, array $data, array $options = []) {
-        $this->schema($this->_fields['updatable']);
+    public function patchEntity(EntityInterface $entity, array $data, array $options = []): EntityInterface
+    {
+        $this->setSchema($this->_fields['updatable']);
+
         return parent::patchEntity($entity, $data, $options);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function patchEntities($entities, array $data, array $options = []) {
-        $this->schema($this->_fields['updatable']);
+    public function patchEntities(iterable $entities, array $data, array $options = []): array
+    {
+        $this->setSchema($this->_fields['updatable']);
+
         return parent::patchEntities($entities, $data, $options);
     }
 
-    public function beforeFind($event, $query, $options, $primary) {
-        $this->schema($this->_fields['selectable']);
+    public function beforeFind(Event $event, Query $query, ArrayObject $options, $primary)
+    {
+        $this->setSchema($this->_fields['selectable']);
     }
 
-    public function beforeSave($event, $entity, $options) {
-        if($options['atomic']) {
-            throw new \Exception('Salesforce API does not support atomic transactions; set atomic to false.');
+    /**
+     * @param Event $event
+     * @param EntityInterface $entity
+     * @param $options
+     * @return bool
+     * @throws Exception
+     */
+    public function beforeSave(Event $event, EntityInterface $entity, $options): bool
+    {
+        if ($options['atomic']) {
+            throw new Exception('Salesforce API does not support atomic transactions; set atomic to false.');
         }
         if ($entity->isNew()) {
-            $this->schema($this->_fields['creatable']);
+            $this->setSchema($this->_fields['creatable']);
         } else {
-            $this->schema($this->_fields['updatable']);
+            $this->setSchema($this->_fields['updatable']);
         }
+
+        return true;
     }
 }

@@ -12,6 +12,7 @@
  * @since         3.1.2
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database\Type;
 
 use Cake\Database\Type\StringType;
@@ -29,7 +30,7 @@ class SalesforceStringType extends StringType
      * @param mixed $value The value to convert.
      * @return mixed Converted value.
      */
-    public function marshal($value)
+    public function marshal($value): ?string
     {
         if ($value === null) {
             return null;
@@ -38,7 +39,7 @@ class SalesforceStringType extends StringType
             return '';
         }
 
-        if(is_object($value)) {
+        if (is_object($value)) {
             return '';
         }
 

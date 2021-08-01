@@ -12,9 +12,11 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\ORM;
 
-use ArrayObject;
+use Cake\Datasource\EntityInterface;
+use Cake\Datasource\InvalidPropertyInterface;
 use Cake\ORM\Marshaller;
 use Salesforce\Database\SalesforceType;
 
@@ -30,43 +32,23 @@ use Salesforce\Database\SalesforceType;
  */
 class SalesforceMarshaller extends Marshaller
 {
+
     /**
-     * Hydrate one entity and its associated data.
-     *
-     * ### Options:
-     *
-     * * associated: Associations listed here will be marshalled as well.
-     * * fieldList: A whitelist of fields to be assigned to the entity. If not present,
-     *   the accessible fields list in the entity will be used.
-     * * accessibleFields: A list of fields to allow or deny in entity accessible fields.
-     *
-     * The above options can be used in each nested `associated` array. In addition to the above
-     * options you can also use the `onlyIds` option for HasMany and BelongsToMany associations.
-     * When true this option restricts the request data to only be read from `_ids`.
-     *
-     * ```
-     * $result = $marshaller->one($data, [
-     *   'associated' => ['Tags' => ['onlyIds' => true]]
-     * ]);
-     * ```
-     *
-     * @param array $data The data to hydrate.
-     * @param array $options List of options
-     * @return \Cake\ORM\Entity
-     * @see \Cake\ORM\Table::newEntity()
+     * {@inheritDoc}
      */
-    public function one(array $data, array $options = [])
+    public function one(array $data, array $options = []): EntityInterface
     {
         list($data, $options) = $this->_prepareDataAndOptions($data, $options);
 
-        $primaryKey = (array)$this->_table->primaryKey();
-        $entityClass = $this->_table->entityClass();
+        $primaryKey = (array)$this->_table->getPrimaryKey();
+        $entityClass = $this->_table->getEntityClass();
+        /** @var EntityInterface $entity */
         $entity = new $entityClass();
-        $entity->source($this->_table->registryAlias());
+        $entity->setSource($this->_table->getRegistryAlias());
 
         if (isset($options['accessibleFields'])) {
             foreach ((array)$options['accessibleFields'] as $key => $value) {
-                $entity->accessible($key, $value);
+                $entity->setAccess($key, $value);
             }
         }
         $errors = $this->_validate($data, $options, true);
@@ -77,7 +59,7 @@ class SalesforceMarshaller extends Marshaller
         foreach ($data as $key => $value) {
             if (!empty($errors[$key])) {
                 if ($entity instanceof InvalidPropertyInterface) {
-                    $entity->invalid($key, $value);
+                    $entity->setInvalidField($key, $value);
                 }
                 continue;
             }
@@ -88,7 +70,8 @@ class SalesforceMarshaller extends Marshaller
             } elseif (isset($propertyMap[$key])) {
                 $properties[$key] = $propertyMap[$key]($value, $entity);
             } else {
-                $columnType = $this->_table->schema()->columnType($key);
+                $columnType = $this->_table->getSchema()
+                                           ->getColumnType($key);
                 if ($columnType) {
                     $converter = SalesforceType::build($columnType);
                     $properties[$key] = $converter->marshal($value);
@@ -98,7 +81,7 @@ class SalesforceMarshaller extends Marshaller
 
         if (!isset($options['fieldList'])) {
             $entity->set($properties);
-            $entity->errors($errors);
+            $entity->setErrors($errors);
 
             return $entity;
         }
@@ -109,7 +92,7 @@ class SalesforceMarshaller extends Marshaller
             }
         }
 
-        $entity->errors($errors);
+        $entity->setErrors($errors);
 
         return $entity;
     }

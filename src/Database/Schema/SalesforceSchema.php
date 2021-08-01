@@ -12,12 +12,13 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database\Schema;
 
+use Cake\Database\Schema\TableSchema;
 use Salesforce\Database\Driver\SalesforceDriverTrait;
 use Cake\Database\Exception;
 use Cake\Database\Schema\BaseSchema;
-use Cake\Database\Schema\Table;
 
 /**
  * Schema generation/reflection features for MySQL
@@ -25,13 +26,14 @@ use Cake\Database\Schema\Table;
 class SalesforceSchema extends BaseSchema
 {
 
-   use SalesforceDriverTrait;
+    use SalesforceDriverTrait;
+
     /**
      * {@inheritDoc}
      */
-    public function listTablesSql($config)
+    public function listTablesSql($config): array
     {
-        return false;
+        return [];
     }
 
     /**
@@ -45,7 +47,7 @@ class SalesforceSchema extends BaseSchema
     }
 
     /**
-     * Custom function that queries the datasource for the table list as SOQL doesn't accept
+     * Custom function that queries the datasource for the table list as SQL doesn't accept
      * DESCRIBE functionality
      */
     public function describeColumn($tableName, $config)
@@ -55,8 +57,6 @@ class SalesforceSchema extends BaseSchema
         foreach ($sfschema->fields as $field) {
             switch ($field->type) {
                 case "id":
-                    $field->type = "integer";
-                    break;
                 case "integer":
                     $field->type = "integer";
                     break;
@@ -79,7 +79,12 @@ class SalesforceSchema extends BaseSchema
 
             //Capital letters here as it is emulating return from MySQL
             if ($field->length > 0) {
-                $newSchema[] = array('Field' => $field->name, 'Type' => $field->type, 'Length' => $field->length, 'Null' => $field->nillable);
+                $newSchema[] = array(
+                    'Field' => $field->name,
+                    'Type' => $field->type,
+                    'Length' => $field->length,
+                    'Null' => $field->nillable
+                );
             } else {
                 $newSchema[] = array('Field' => $field->name, 'Type' => $field->type, 'Null' => $field->nillable);
             }
@@ -87,39 +92,55 @@ class SalesforceSchema extends BaseSchema
         return $newSchema;
 
     }
+
     /**
      * {@inheritDoc}
      */
-    public function describeColumnSql($tableName, $config)
+    public function describeColumnSql($tableName, $config): array
     {
-        return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function describeIndexSql($tableName, $config)
+    public function describeIndexSql($tableName, $config): array
     {
-        return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function describeOptionsSql($tableName, $config)
+    public function describeOptionsSql($tableName, $config): array
     {
-        return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function convertOptionsDescription(Table $table, $row)
+    public function convertOptionsDescription(TableSchema $table, $row): void
     {
-        $table->options([
+        $table->setOptions([
             'engine' => $row['Engine'],
             'collation' => $row['Collation'],
         ]);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function convertColumnDescription(TableSchema $table, $row): void
+    {
+        $field = $this->_convertColumn($row['Type']);
+        $field += [
+            'null' => $row['Null'] === 'YES' ? true : false
+        ];
+        if (isset($row['Extra']) && $row['Extra'] === 'auto_increment') {
+            $field['autoIncrement'] = true;
+        }
+        $table->addColumn($row['Field'], $field);
     }
 
     /**
@@ -200,64 +221,47 @@ class SalesforceSchema extends BaseSchema
     /**
      * {@inheritDoc}
      */
-    public function convertColumnDescription(Table $table, $row)
+    public function convertIndexDescription(TableSchema $table, $row): void
     {
-        $field = $this->_convertColumn($row['Type']);
-        $field += [
-            'null' => $row['Null'] === 'YES' ? true : false
-        ];
-        if (isset($row['Extra']) && $row['Extra'] === 'auto_increment') {
-            $field['autoIncrement'] = true;
-        }
-        $table->addColumn($row['Field'], $field);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function convertIndexDescription(Table $table, $row)
+    public function describeForeignKeySql($tableName, $config): array
     {
-        return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function describeForeignKeySql($tableName, $config)
+    public function convertForeignKeyDescription(TableSchema $table, $row): void
     {
-        return false;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function convertForeignKeyDescription(Table $table, $row)
+    public function truncateTableSql(TableSchema $table): array
     {
-        return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function truncateTableSql(Table $table)
+    public function createTableSql(TableSchema $table, $columns, $constraints, $indexes): array
     {
-       return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function createTableSql(Table $table, $columns, $constraints, $indexes)
+    public function columnSql(TableSchema $table, $name): string
     {
-       return false;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function columnSql(Table $table, $name)
-    {
-        $data = $table->column($name);
+        $data = $table->getColumn($name);
         $out = $this->_driver->quoteIdentifier($name);
         $typeMap = [
             'integer' => ' INTEGER',
@@ -295,29 +299,21 @@ class SalesforceSchema extends BaseSchema
         }
 
         $hasPrecision = ['float', 'decimal'];
-        if (in_array($data['type'], $hasPrecision, true) &&
-            (isset($data['length']) || isset($data['precision']))
-        ) {
+        if (in_array($data['type'], $hasPrecision, true) && (isset($data['length']) || isset($data['precision']))) {
             $out .= '(' . (int)$data['length'] . ',' . (int)$data['precision'] . ')';
         }
 
         $hasUnsigned = ['float', 'decimal', 'integer', 'biginteger'];
-        if (in_array($data['type'], $hasUnsigned, true) &&
-            isset($data['unsigned']) && $data['unsigned'] === true
-        ) {
+        if (in_array($data['type'], $hasUnsigned, true) && isset($data['unsigned']) && $data['unsigned'] === true) {
             $out .= ' UNSIGNED';
         }
 
         if (isset($data['null']) && $data['null'] === false) {
             $out .= ' NOT NULL';
         }
-        $addAutoIncrement = (
-            [$name] == (array)$table->primaryKey() &&
-            !$table->hasAutoIncrement()
-        );
-        if (in_array($data['type'], ['integer', 'biginteger']) &&
-            ($data['autoIncrement'] === true || $addAutoIncrement)
-        ) {
+        $addAutoIncrement = ([$name] == (array)$table->getPrimaryKey() && !$table->hasAutoIncrement());
+        if (in_array($data['type'],
+                ['integer', 'biginteger']) && ($data['autoIncrement'] === true || $addAutoIncrement)) {
             $out .= ' AUTO_INCREMENT';
         }
         if (isset($data['null']) && $data['null'] === true) {
@@ -328,10 +324,8 @@ class SalesforceSchema extends BaseSchema
             $out .= ' DEFAULT ' . $this->_driver->schemaValue($data['default']);
             unset($data['default']);
         }
-        if (isset($data['default']) &&
-            in_array($data['type'], ['timestamp', 'datetime']) &&
-            strtolower($data['default']) === 'current_timestamp'
-        ) {
+        if (isset($data['default']) && in_array($data['type'],
+                ['timestamp', 'datetime']) && strtolower($data['default']) === 'current_timestamp') {
             $out .= ' DEFAULT CURRENT_TIMESTAMP';
             unset($data['default']);
         }
@@ -344,15 +338,7 @@ class SalesforceSchema extends BaseSchema
     /**
      * {@inheritDoc}
      */
-    public function constraintSql(Table $table, $name)
-    {
-       return false;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function addConstraintSql(Table $table)
+    public function constraintSql(TableSchema $table, $name): string
     {
         return false;
     }
@@ -360,28 +346,24 @@ class SalesforceSchema extends BaseSchema
     /**
      * {@inheritDoc}
      */
-    public function dropConstraintSql(Table $table)
+    public function addConstraintSql(TableSchema $table): array
     {
-       return false;
+        return [];
     }
 
     /**
      * {@inheritDoc}
      */
-    public function indexSql(Table $table, $name)
+    public function dropConstraintSql(TableSchema $table): array
     {
-        return false;
+        return [];
     }
 
     /**
-     * Helper method for generating key SQL snippets.
-     *
-     * @param string $prefix The key prefix
-     * @param array $data Key data.
-     * @return string
+     * {@inheritDoc}
      */
-    protected function _keySql($prefix, $data)
+    public function indexSql(TableSchema $table, $name): string
     {
-        return false;
+        return '';
     }
 }

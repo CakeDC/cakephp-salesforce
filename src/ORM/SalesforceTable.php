@@ -12,43 +12,41 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\ORM;
 
 use \ArrayObject;
 use Cake\Datasource\EntityInterface;
+use Cake\ORM\Marshaller;
+use Cake\ORM\Query;
 use Cake\ORM\Table;
-use Salesforce\ORM\SalesforceQuery;
-use Salesforce\ORM\SalesforceMarshaller;
-
 
 class SalesforceTable extends Table
 {
     /**
      * {@inheritDoc}
      */
-    public function query()
+    public function query(): Query
     {
-        return new SalesforceQuery($this->connection(), $this);
+        return new SalesforceQuery($this->getConnection(), $this);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function exists($conditions)
+    public function exists($conditions): bool
     {
-        return (bool)count(
-            $this->find('all')
-                ->select(['Id'])
-                ->where($conditions)
-                ->limit(1)
-                ->hydrate(false)
-                ->toArray()
-        );
+        return (bool)count($this->find('all')
+                                ->select(['Id'])
+                                ->where($conditions)
+                                ->limit(1)
+                                ->enableHydration(false)
+                                ->toArray());
     }
 
     /**
-    * {@inheritDoc}
-    */
+     * {@inheritDoc}
+     */
     public function save(EntityInterface $entity, $options = [])
     {
         $options = new ArrayObject($options + [
@@ -62,15 +60,14 @@ class SalesforceTable extends Table
         if (is_array($entity)) {
             $entity = $this->newEntity($entity);
         }
-        if ($entity->errors()) {
+        if ($entity->getErrors()) {
             return false;
         }
 
-        if ($entity->isNew() === false && !$entity->dirty()) {
+        if ($entity->isNew() === false && !$entity->isDirty()) {
             return $entity;
         }
 
-        $connection = $this->connection();
         $success = $this->_processSave($entity, $options);
 
         if ($success) {
@@ -79,49 +76,46 @@ class SalesforceTable extends Table
             }
 
             if ($options['atomic'] || $options['_primary']) {
-                $entity->isNew(false);
-                $entity->source($this->registryAlias());
+                $entity->setNew(false);
+                $entity->setSource($this->getRegistryAlias());
             }
         } else {
-            $errors = $this->connection()->driver()->errors[0];
+            $errors = $this->getConnection()
+                           ->getDriver()->errors[0];
             if (!empty($errors->fields)) {
                 $field = $errors->fields[0];
             } else {
                 // For lack of anything better...
                 $field = 'id';
             }
-            $entity->errors($field, $errors->message);
+            $entity->setErrors($field, $errors->message);
         }
 
         return $success;
     }
+
     /**
-    * {@inheritDoc}
-    */
-    public function newEntity($data = null, array $options = [])
+     * {@inheritDoc}
+     */
+    public function newEntity(array $data, array $options = []): EntityInterface
     {
         if ($data === null) {
-            $class = $this->entityClass();
-            $entity = new $class([], ['source' => $this->registryAlias()]);
-            return $entity;
+            $class = $this->getEntityClass();
+
+            return new $class([], ['source' => $this->getRegistryAlias()]);
         }
         if (!isset($options['associated'])) {
             $options['associated'] = $this->_associations->keys();
         }
         $marshaller = $this->marshaller();
+
         return $marshaller->one($data, $options);
     }
 
     /**
-     * Get the object used to marshal/convert array data into objects.
-     *
-     * Override this method if you want a table object to use custom
-     * marshalling logic.
-     *
-     * @return \Cake\ORM\Marshaller
-     * @see \Cake\ORM\Marshaller
+     * {@inheritDoc}
      */
-    public function marshaller()
+    public function marshaller(): Marshaller
     {
         return new SalesforceMarshaller($this);
     }

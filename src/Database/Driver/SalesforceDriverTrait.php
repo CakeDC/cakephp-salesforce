@@ -4,62 +4,21 @@ namespace Salesforce\Database\Driver;
 
 use Cake\Database\Query;
 use Cake\Cache\Cache;
+use Cake\Log\Log;
+
 /**
  * SF driver trait
  */
 trait SalesforceDriverTrait
 {
-    protected $_connection;
     public $config;
 
-	/**
-	 * @var \SforceEnterpriseClient
-	 */
+    /**
+     * @var \SforceEnterpriseClient
+     */
     public $client;
 
-	/**
-	 * Establishes a connection to the salesforce server
-	 *
-	 * @param string $dsn A Driver-specific PDO-DSN
-	 * @param array $config configuration to be used for creating connection
-	 * @return bool true on success
-	 * @throws \ErrorException
-	 */
-    protected function _connect($dns, array $config)
-    {
-        $this->config = $config;
-
-        if (empty($this->config['my_wsdl'])) {
-            throw new \ErrorException ("A WSDL needs to be provided");
-        } else {
-            $wsdl = CONFIG .DS  . $this->config['my_wsdl'];
-        }
-
-        $mySforceConnection = new \SforceEnterpriseClient();
-        $mySforceConnection->createConnection($wsdl);
-
-        $cache_key = $config['name'] . '_login';
-        $sflogin = (array)Cache::read($cache_key, 'salesforce');
-
-        if(!empty($sflogin['sessionId'])) {
-            $mySforceConnection->setSessionHeader($sflogin['sessionId']);
-            $mySforceConnection->setEndPoint($sflogin['serverUrl']);
-        } else {
-            try{
-                $mylogin = $mySforceConnection->login($this->config['username'], $this->config['password']);
-                $sflogin = array('sessionId' => $mylogin->sessionId, 'serverUrl' => $mylogin->serverUrl);
-                Cache::write($cache_key, $sflogin, 'salesforce');
-            } catch (\Exception $e) {
-                \Cake\Cake\Log::write('error', "Error logging into salesforce - Salesforce down?");
-                \Cake\Cake\Log::write('error', "Username: " . $this->config['username']);
-                \Cake\Cake\Log::write('error', "Password: " . $this->config['password']);
-            }
-        }
-
-        $this->client = $mySforceConnection;
-        $this->connected = true;
-        return $this->connected;
-    }
+    protected $_connection;
 
     /**
      * Returns correct connection resource or object that is internally used
@@ -176,5 +135,49 @@ trait SalesforceDriverTrait
     public function supportsQuoting()
     {
         return false;
+    }
+
+    /**
+     * Establishes a connection to the salesforce server
+     *
+     * @param string $dsn A Driver-specific PDO-DSN
+     * @param array $config configuration to be used for creating connection
+     * @return bool true on success
+     * @throws \ErrorException
+     */
+    protected function _connect($dns, array $config)
+    {
+        $this->config = $config;
+
+        if (empty($this->config['my_wsdl'])) {
+            throw new \ErrorException ("A WSDL needs to be provided");
+        } else {
+            $wsdl = CONFIG . DS . $this->config['my_wsdl'];
+        }
+
+        $mySforceConnection = new \SforceEnterpriseClient();
+        $mySforceConnection->createConnection($wsdl);
+
+        $cache_key = $config['name'] . '_login';
+        $sflogin = (array)Cache::read($cache_key, 'salesforce');
+
+        if (!empty($sflogin['sessionId'])) {
+            $mySforceConnection->setSessionHeader($sflogin['sessionId']);
+            $mySforceConnection->setEndPoint($sflogin['serverUrl']);
+        } else {
+            try {
+                $mylogin = $mySforceConnection->login($this->config['username'], $this->config['password']);
+                $sflogin = array('sessionId' => $mylogin->sessionId, 'serverUrl' => $mylogin->serverUrl);
+                Cache::write($cache_key, $sflogin, 'salesforce');
+            } catch (\Exception $e) {
+                Log::write('error', "Error logging into salesforce - Salesforce down?");
+                Log::write('error', "Username: " . $this->config['username']);
+                Log::write('error', "Password: " . $this->config['password']);
+            }
+        }
+
+        $this->client = $mySforceConnection;
+        $this->connected = true;
+        return $this->connected;
     }
 }

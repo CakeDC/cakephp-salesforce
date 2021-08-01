@@ -12,22 +12,13 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database;
 
 use Cake\Database\Query;
+use Cake\Database\StatementInterface;
 use Cake\Database\ValueBinder;
-use Salesforce\Database\Schema\SalesforceCollection as SchemaCollection;
-use Cake\Database\TypeConverterTrait;
 use Cake\Database\Connection;
-use Cake\Database\Exception\MissingConnectionException;
-use Cake\Database\Exception\MissingDriverException;
-use Cake\Database\Exception\MissingExtensionException;
-use Cake\Database\Log\LoggedQuery;
-use Cake\Database\Log\LoggingStatement;
-use Cake\Database\Log\QueryLogger;
-use Cake\Database\Schema\CachedCollection;
-use Cake\Datasource\ConnectionInterface;
-use Exception;
 
 /**
  * Represents a connection with a database server.
@@ -35,55 +26,47 @@ use Exception;
 class SalesforceConnection extends Connection
 {
     /**
-     * Compiles a Query object into a SQL string according to the dialect for this
-     * connection's driver
-     *
-     * @param Query $query The query to be compiled
-     * @param ValueBinder $generator The placeholder generator to use
-     * @return string
+     * {@inheritDoc}
      */
-    public function compileQuery(Query $query, ValueBinder $generator)
+    public function compileQuery(Query $query, ValueBinder $binder): string
     {
-        return $this->driver()->compileQuery($query, $generator)[1];
+        return $this->getDriver()
+                    ->compileQuery($query, $binder)[1];
     }
 
     /**
-     * Create a new Query instance for this connection.
-     *
-     * @return Query
+     * {@inheritDoc}
      */
-    public function newQuery()
+    public function newQuery(): Query
     {
         return new SalesforceQuery($this);
     }
 
-    public function run(Query $query)
+    /**
+     * {@inheritDoc}
+     */
+    public function run(Query $query): StatementInterface
     {
         $statement = $this->prepare($query);
-        $query->valueBinder()->attachTo($statement);
+        $query->getValueBinder()
+              ->attachTo($statement);
         $statement->execute();
 
         return $statement;
     }
 
     /**
-     * Checks if the driver supports quoting.
-     *
-     * @return bool
+     * {@inheritDoc}
      */
-    public function supportsQuoting()
+    public function supportsQuoting(): bool
     {
         return false;
     }
 
     /**
-     * Quotes a database identifier (a column name, table name, etc..) to
-     * be used safely in queries without the risk of using reserved words.
-     *
-     * @param string $identifier The identifier to quote.
-     * @return string
+     * {@inheritDoc}
      */
-    public function quoteIdentifier($identifier)
+    public function quoteIdentifier($identifier): string
     {
         return $identifier;
     }

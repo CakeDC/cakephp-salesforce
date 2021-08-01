@@ -12,16 +12,12 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\ORM;
 
+use Cake\ORM\Query;
 use Cake\ORM\ResultSet;
-use Cake\Collection\Collection;
-use Cake\Collection\CollectionTrait;
-use Cake\Database\Exception;
-use Cake\Database\Type;
-use Cake\Datasource\EntityInterface;
-use Cake\Datasource\ResultSetInterface;
-use SplFixedArray;
+
 
 /**
  * Represents the results obtained after executing a query for a specific table
@@ -33,12 +29,27 @@ use SplFixedArray;
 class SalesforceResultSet extends ResultSet
 {
     /**
-     * Creates a map of row keys out of the query select clause that can be
-     * used to hydrate nested result sets more quickly.
-     *
-     * @return void
+     * {@inheritDoc}
      */
-	protected function _calculateColumnMap($query)
+    public function first()
+    {
+        foreach ($this as $result) {
+            if ($this->_statement && !$this->_useBuffering) {
+                $this->_statement->closeCursor();
+            }
+            $result = new $this->_entityClass($result);
+            $result->clean();
+
+            return $result;
+        }
+
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _calculateColumnMap(Query $query): void
     {
         $map = []; //My one
         foreach ($query->clause('select') as $key => $field) {
@@ -63,21 +74,7 @@ class SalesforceResultSet extends ResultSet
     }
 
     /**
-     * Correctly nests results keys including those coming from associations
-     *
-     * @param mixed $row Array containing columns and values or false if there is no results
-     * @return array Results
-     */
-    protected function _groupResult($row)
-    {
-        return $row;
-    }
-
-    /**
-     * Helper function to fetch the next result from the statement or
-     * seeded results.
-     *
-     * @return mixed
+     * {@inheritDoc}
      */
     protected function _fetchResult()
     {
@@ -93,21 +90,10 @@ class SalesforceResultSet extends ResultSet
     }
 
     /**
-     * Get the first record from a result set.
-     *
-     * This method will also close the underlying statement cursor.
-     *
-     * @return array|object
+     * {@inheritDoc}
      */
-    public function first()
+    protected function _groupResult($row)
     {
-        foreach ($this as $result) {
-            if ($this->_statement && !$this->_useBuffering) {
-                $this->_statement->closeCursor();
-            }
-            $result = new $this->_entityClass($result);
-            $result->clean();
-            return $result;
-        }
+        return $row;
     }
 }

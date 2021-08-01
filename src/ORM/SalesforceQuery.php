@@ -12,9 +12,11 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\ORM;
 
 use ArrayObject;
+use Cake\Datasource\ResultSetInterface;
 use Salesforce\ORM\SalesforceResultSet;
 use Salesforce\Database\SalesforceQuery as SalesforceDatabaseQuery;
 use Cake\ORM\Query;
@@ -34,27 +36,9 @@ class SalesforceQuery extends Query
     public $queryString = "";
 
     /**
-     * Executes this query and returns a ResultSet object containing the results.
-     * This will also setup the correct statement class in order to eager load deep
-     * associations.
-     *
-     * @return \Cake\ORM\ResultSet
-     */
-    protected function _execute()
-    {
-        $this->triggerBeforeFind();
-        if ($this->_results) {
-            $decorator = $this->_decoratorClass();
-            return new $decorator($this->_results);
-        }
-        $statement = $this->eagerLoader()->loadExternal($this, $this->execute());
-        return new SalesforceResultSet($this, $statement);
-    }
-
-    /**
      * {@inheritDoc}
      */
-    public function sql(ValueBinder $binder = null)
+    public function sql(?ValueBinder $binder = null): string
     {
         $this->triggerBeforeFind();
 
@@ -66,5 +50,21 @@ class SalesforceQuery extends Query
         $sql = @SalesforceDatabaseQuery::sql(null, $this);
 
         return $sql;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function _execute(): ResultSetInterface
+    {
+        $this->triggerBeforeFind();
+        if ($this->_results) {
+            $decorator = $this->_decoratorClass();
+            return new $decorator($this->_results);
+        }
+        $statement = $this->getEagerLoader()
+                          ->loadExternal($this, $this->execute());
+
+        return new SalesforceResultSet($this, $statement);
     }
 }

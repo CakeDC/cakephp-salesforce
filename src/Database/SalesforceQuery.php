@@ -12,6 +12,7 @@
  * @since         3.0.0
  * @license       http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Salesforce\Database;
 
 use Cake\Database\Query;
@@ -32,32 +33,6 @@ use RuntimeException;
  */
 class SalesforceQuery extends Query
 {
-    /**
-     * Returns the SQL representation of this object.
-     *
-     * This function will compile this query to make it compatible
-     * with the SQL dialect that is used by the connection, This process might
-     * add, remove or alter any query part or internal expression to make it
-     * executable in the target platform.
-     *
-     * The resulting query may have placeholders that will be replaced with the actual
-     * values when the query is executed, hence it is most suitable to use with
-     * prepared statements.
-     *
-     * @param ValueBinder $generator A placeholder object that will hold
-     * associated values for expressions
-     * @return string
-     */
-    public function sql(ValueBinder $generator = null, $incoming = null)
-    {
-        if (!$generator) {
-            $generator = $incoming->valueBinder();
-            $generator->resetCount();
-        }
-
-        return $incoming->connection()->compileQuery($incoming, $generator);
-    }
-
     /**
      * Will iterate over every specified part. Traversing functions can aggregate
      * results using variables in the closure or instance variables. This function
@@ -94,8 +69,35 @@ class SalesforceQuery extends Query
      *
      * @return string
      */
-    public function __toString()
+    public function __toString(): string
     {
         return $this->sql();
+    }
+
+    /**
+     * Returns the SQL representation of this object.
+     *
+     * This function will compile this query to make it compatible
+     * with the SQL dialect that is used by the connection, This process might
+     * add, remove or alter any query part or internal expression to make it
+     * executable in the target platform.
+     *
+     * The resulting query may have placeholders that will be replaced with the actual
+     * values when the query is executed, hence it is most suitable to use with
+     * prepared statements.
+     *
+     * @param ValueBinder $generator A placeholder object that will hold
+     * associated values for expressions
+     * @return string
+     */
+    public function sql(ValueBinder $generator = null, $incoming = null)
+    {
+        if (!$generator) {
+            $generator = $incoming->valueBinder();
+            $generator->resetCount();
+        }
+
+        return $incoming->connection()
+                        ->compileQuery($incoming, $generator);
     }
 }

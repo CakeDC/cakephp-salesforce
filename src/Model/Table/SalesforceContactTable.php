@@ -1,4 +1,5 @@
 <?php
+
 namespace Salesforce\Model\Table;
 
 use Salesforce\Model\Entity\Salesforce;
@@ -8,17 +9,14 @@ class SalesforceContactTable extends SalesforcesTable
     public $name = "Contact";
 
     /**
-     * Initialize method
-     *
-     * @param  array $config The configuration for the Table.
-     * @return void
+     * {@inheritDoc}
      */
-    public function initialize(array $config)
+    public function initialize(array $config): void
     {
         parent::initialize($config);
 
-        $this->table('Contact');
-        $this->displayField('Name');
-        $this->primaryKey('Id');
+        $this->setTable('Contact');
+        $this->setDisplayField('Name');
+        $this->setPrimaryKey('Id');
     }
 }
