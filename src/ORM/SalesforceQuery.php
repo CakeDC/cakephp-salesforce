@@ -47,7 +47,15 @@ class SalesforceQuery extends Query
         // Not a static function, and can't be made static because of base class,
         // so we @hide the warning about a non-static function used in a static
         // context.
-        $sql = @SalesforceDatabaseQuery::sql(null, $this);
+
+        //$sql = SalesforceDatabaseQuery::sql(null, $this);
+
+        $generator = $this->getValueBinder();
+        $generator->resetCount();
+
+        $sql = $this->getConnection()
+                    ->compileQuery($this, $generator);
+
 
         return $sql;
     }

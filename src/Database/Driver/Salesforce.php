@@ -75,6 +75,7 @@ class Salesforce extends Driver
         if ($isObject && $query->isBufferedResultsEnabled() === false) {
             $result->bufferResults(false);
         }
+
         return $result;
     }
 

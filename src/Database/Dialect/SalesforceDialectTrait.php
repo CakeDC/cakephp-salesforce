@@ -15,6 +15,7 @@
 
 namespace Salesforce\Database\Dialect;
 
+use Cake\Database\Schema\SchemaDialect;
 use Salesforce\Database\Schema\SalesforceSchema;
 use Cake\Database\SqlDialectTrait;
 
@@ -58,7 +59,7 @@ trait SalesforceDialectTrait
      *
      * @return \Cake\Database\Schema\MysqlSchema
      */
-    public function schemaDialect()
+    public function schemaDialect(): SchemaDialect
     {
         if (!$this->_schemaDialect) {
             $this->_schemaDialect = new SalesforceSchema($this);
@@ -69,7 +70,7 @@ trait SalesforceDialectTrait
     /**
      * {@inheritDoc}
      */
-    public function disableForeignKeySQL()
+    public function disableForeignKeySQL(): string
     {
         return '';
     }
@@ -77,7 +78,7 @@ trait SalesforceDialectTrait
     /**
      * {@inheritDoc}
      */
-    public function enableForeignKeySQL()
+    public function enableForeignKeySQL(): string
     {
         return '';
     }

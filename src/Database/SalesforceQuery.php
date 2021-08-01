@@ -22,6 +22,7 @@ use Cake\Database\Expression\QueryExpression;
 use Cake\Database\Expression\ValuesExpression;
 use Cake\Database\Statement\CallbackStatement;
 use Cake\Database\ValueBinder;
+use Closure;
 use IteratorAggregate;
 use RuntimeException;
 
@@ -55,12 +56,13 @@ class SalesforceQuery extends Query
      * @param array $parts the query clauses to traverse
      * @return $this
      */
-    public function traverse(callable $visitor, array $parts = [])
+    public function traverse(Closure $callback)
     {
-        $parts = $parts ?: array_keys($this->_parts);
-        foreach ($parts as $name) {
-            $visitor($this->_parts[$name], $name);
+
+        foreach ($this->_parts as $name => $part) {
+            $callback($part, $name);
         }
+
         return $this;
     }
 

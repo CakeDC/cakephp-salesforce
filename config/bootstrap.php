@@ -2,7 +2,7 @@
 
 use Cake\Cache\Cache;
 
-Cache::config('salesforce', [
+Cache::setConfig('salesforce', [
     'className' => 'Cake\Cache\Engine\FileEngine',
     'duration' => '+1 hours',
     'probability' => 100,

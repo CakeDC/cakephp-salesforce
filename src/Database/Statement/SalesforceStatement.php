@@ -16,7 +16,9 @@
 namespace Salesforce\Database\Statement;
 
 use AssignmentRuleHeader;
+use Cake\Database\DriverInterface;
 use Cake\Database\Statement\StatementDecorator;
+use Cake\Database\StatementInterface;
 
 /**
  * Statement class meant to be used by a Mysql PDO driver
@@ -35,6 +37,12 @@ class SalesforceStatement extends StatementDecorator
 
     private $_last_insert_id = [];
 
+    public function __construct($statement, DriverInterface $driver)
+    {
+        $this->_statement = $statement;
+        $this->_driver = $driver;
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -43,7 +51,7 @@ class SalesforceStatement extends StatementDecorator
     public function execute(?array $params = null): bool
     {
         $sql = $this->_statement->sql();
-        $bindings = $this->_statement->valueBinder()
+        $bindings = $this->_statement->getValueBinder()
                                      ->bindings();
         $this->_driver->errors = null;
 
@@ -113,7 +121,7 @@ class SalesforceStatement extends StatementDecorator
         $this->last_rows_affected = $result->size;
         $this->last_result = $result;
 
-        return $result;
+        return true;
     }
 
     /**

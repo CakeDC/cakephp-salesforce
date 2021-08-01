@@ -2,6 +2,9 @@
 
 namespace Salesforce\Model\Table;
 
+use AE\SalesforceRestSdk\Model\Rest\Composite\CollectionRequest;
+use AE\SalesforceRestSdk\Model\Rest\Composite\CollectionResponse;
+use AE\SalesforceRestSdk\Model\Rest\Composite\CompositeSObject;
 use ArrayObject;
 use Cake\Datasource\EntityInterface;
 use Cake\Event\Event;

@@ -4,7 +4,9 @@ namespace Salesforce\Database\Driver;
 
 use Cake\Database\Query;
 use Cake\Cache\Cache;
+use Cake\Database\StatementInterface;
 use Cake\Log\Log;
+use PDO;
 
 /**
  * SF driver trait
@@ -18,15 +20,13 @@ trait SalesforceDriverTrait
      */
     public $client;
 
+    /**
+     * @var null|\PDO $connection The PDO connection instance
+     */
     protected $_connection;
 
     /**
-     * Returns correct connection resource or object that is internally used
-     * If first argument is passed, it will set internal connection object or
-     * result to the value passed
-     *
-     * @param null|\PDO $connection The PDO connection instance.
-     * @return mixed connection object used internally
+     * {@inheritDoc}
      */
     public function connection($connection = null)
     {
@@ -37,22 +37,17 @@ trait SalesforceDriverTrait
     }
 
     /**
-     * Disconnects from database server
-     *
-     * @return void
+     * {@inheritDoc}
      */
-    public function disconnect()
+    public function disconnect(): void
     {
         $this->_connection = null;
     }
 
     /**
-     * Prepares a sql statement to be executed
-     *
-     * @param string|\Cake\Database\Query $query The query to turn into a prepared statement.
-     * @return \Cake\Database\StatementInterface
+     * {@inheritDoc}
      */
-    public function prepare($query)
+    public function prepare($query): StatementInterface
     {
         $this->connect();
         $isObject = $query instanceof Query;
@@ -61,11 +56,9 @@ trait SalesforceDriverTrait
     }
 
     /**
-     * Starts a transaction
-     *
-     * @return bool true on success, false otherwise
+     * {@inheritDoc}
      */
-    public function beginTransaction()
+    public function beginTransaction(): bool
     {
         $this->connect();
         if ($this->_connection->inTransaction()) {
@@ -75,53 +68,44 @@ trait SalesforceDriverTrait
     }
 
     /**
-     * Commits a transaction
-     *
-     * @return bool true on success, false otherwise
+     * {@inheritDoc}
      */
-    public function commitTransaction()
+    public function commitTransaction(): bool
     {
         $this->connect();
         if (!$this->_connection->inTransaction()) {
             return false;
         }
+
         return $this->_connection->commit();
     }
 
     /**
-     * Rollsback a transaction
-     *
-     * @return bool true on success, false otherwise
+     * {@inheritDoc}
      */
-    public function rollbackTransaction()
+    public function rollbackTransaction(): bool
     {
         if (!$this->_connection->inTransaction()) {
             return false;
         }
+
         return $this->_connection->rollback();
     }
 
     /**
-     * Returns a value in a safe representation to be used in a query string
-     *
-     * @param mixed $value The value to quote.
-     * @param string $type Type to be used for determining kind of quoting to perform
-     * @return string
+     * {@inheritDoc}
      */
-    public function quote($value, $type)
+    public function quote($value, $type = PDO::PARAM_STR): string
     {
         $this->connect();
+
         return $this->_connection->quote($value, $type);
     }
 
     /**
-     * Returns last id generated for a table or sequence in database
-     *
-     * @param string|null $table table name or sequence to get last insert value from
-     * @param string|null $column the name of the column representing the primary key
-     * @return string|int
+     * {@inheritDoc}
      */
-    public function lastInsertId($table = null, $column = null)
+    public function lastInsertId(?string $table = null, ?string $column = null)
     {
         $this->connect();
         return $this->_connection->lastInsertId($table);
@@ -132,7 +116,7 @@ trait SalesforceDriverTrait
      *
      * @return bool
      */
-    public function supportsQuoting()
+    public function supportsQuoting(): bool
     {
         return false;
     }
@@ -145,7 +129,7 @@ trait SalesforceDriverTrait
      * @return bool true on success
      * @throws \ErrorException
      */
-    protected function _connect($dns, array $config)
+    protected function _connect(string $dsn, array $config): bool
     {
         $this->config = $config;
 
