@@ -15,10 +15,13 @@
 
 namespace Salesforce\Database\Driver;
 
+use AE\SalesforceRestSdk\AuthProvider\CachedSoapProvider;
+use AE\SalesforceRestSdk\Rest\Client;
 use Cake\Database\Query;
 use Cake\Database\QueryCompiler;
 use Cake\Database\StatementInterface;
 use Cake\Database\ValueBinder;
+use Cake\Filesystem\File;
 use Salesforce\Database\Dialect\SalesforceDialectTrait;
 use Salesforce\Database\Driver\SalesforceDriverTrait;
 use Salesforce\Database\SalesforceQueryCompiler;
@@ -137,4 +140,27 @@ class Salesforce extends Driver
     {
         return new SalesforceQueryCompiler();
     }
+
+    protected $restClient;
+
+    public function getRestClient()
+    {
+        $wsdl = new File(CONFIG . $this->_config['my_wsdl']);
+        $res = preg_match('#soap:address location="(https://.*)/services/Soap/c/(\d+.\d)#', $wsdl->read(), $matches);
+        if ($this->restClient === null) {
+            $this->restClient = new Client(
+                new CachedSoapProvider(
+                    new FilesystemAdapter('', 0, CACHE),
+                    $this->_config['username'],
+                    $this->_config['password'],
+                    $matches[1]
+                ),
+                $matches[2],
+            );
+
+        }
+
+        return $this->restClient;
+    }
+
 }
