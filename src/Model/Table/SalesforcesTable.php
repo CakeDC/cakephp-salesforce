@@ -151,4 +151,96 @@ class SalesforcesTable extends SalesforceTable
             $this->schema($this->_fields['updatable']);
         }
     }
+
+    public function toCompositeSObject(EntityInterface $entity, $includeId = false)
+    {
+        $object = new CompositeSObject($this->getTable());
+        foreach ($entity->extract($entity->getDirty()) as $name => $value) {
+            $object->{$name} = $value;
+        }
+        if ($includeId) {
+            $object->Id = $entity['Id'];
+        }
+
+        return $object;
+    }
+
+    /**
+     * @param EntityInterface[] $records
+     * @return CollectionResponse[]
+     */
+    public function createBulk(array $records): array
+    {
+        $items = collection($records)->map(function($item) { return $this->toCompositeSObject($item);})->toArray();
+        $request = new CollectionRequest($items, true);
+
+        $client = $this->getConnection()->getDriver()->getRestClient();
+        $result = $client->getCompositeClient()->create($request);
+
+        foreach ($result as $id => $resultItem) {
+            if ($resultItem->isSuccess()) {
+                $records[$id]->set('Id', $resultItem->getId());
+                $records[$id]->clean();
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param EntityInterface[] $records
+     * @return CollectionResponse[]
+     */
+    public function updateBulk(array $records): array
+    {
+        $items = collection($records)->map(function($item) {
+            return $this->toCompositeSObject($item, true);
+        })->toArray();
+
+        return $this->getConnection()
+                    ->getDriver()
+                    ->getRestClient()
+                    ->getCompositeClient()
+                    ->update(new CollectionRequest($items, true));
+    }
+
+    /**
+     * @param array $ids
+     * @return CollectionResponse[]
+     */
+    public function readBulk(array $ids, $fields = null): array
+    {
+        $this->schema($this->_fields['selectable']);
+        if ($fields === null) {
+            $fields = array_keys($this->_fields['selectable']);
+        }
+        $client = $this->getConnection()->getDriver()->getRestClient();
+        $response = $client->getCompositeClient()->read($this->getTable(), $ids, $fields);
+
+        return collection($response)->map(function (CompositeSObject $item) {
+            return $this->marshaller()->one($item->getFields());
+            //return $this->newEntity($item->getFields());
+        })->toArray();
+    }
+
+    /**
+     * @param array $ids
+     * @return CollectionResponse[]
+     */
+    public function deleteBulk(array $ids): array
+    {
+        $items = collection($ids)->map(function($id) {
+            $object = new CompositeSObject($this->getTable());
+            $object->Id = $id;
+
+            return $object;
+        })->toArray();
+
+        return $this->getConnection()
+                    ->getDriver()
+                    ->getRestClient()
+                    ->getCompositeClient()
+                    ->delete(new CollectionRequest($items, true));
+    }
+
 }
