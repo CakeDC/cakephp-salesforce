@@ -25,6 +25,7 @@ use Salesforce\Database\SalesforceQueryCompiler;
 use Salesforce\Database\SalesforceQuery;
 use Salesforce\Database\Statement\SalesforceStatement;
 use Cake\Database\Driver;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class Salesforce extends Driver
 {
