@@ -51,14 +51,13 @@ class SalesforceStatement extends StatementDecorator
     public function execute(?array $params = null): bool
     {
         $sql = $this->_statement->sql();
-        $bindings = $this->_statement->getValueBinder()
-                                     ->bindings();
+        $bindings = $this->_statement->getValueBinder()->bindings();
         $this->_driver->errors = null;
 
         //intercept Update here
         if ($this->_statement->type() == 'update') {
             $results = $this->_driver->client->update([$this->_buildObjectFromUpdate($sql, $bindings)],
-                $this->_statement->repository()->name);
+                $this->_statement->getRepository()->name);
             if (is_object($results)) {
                 trigger_error('Unexpected object results', E_USER_ERROR);
             }

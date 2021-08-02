@@ -251,16 +251,18 @@ class SalesforcesTable extends SalesforceTable
      */
     public function readBulk(array $ids, $fields = null): array
     {
-        $this->schema($this->_fields['selectable']);
+        $this->getSchema($this->_fields['selectable']);
         if ($fields === null) {
             $fields = array_keys($this->_fields['selectable']);
         }
-        $client = $this->getConnection()->getDriver()->getRestClient();
-        $response = $client->getCompositeClient()->read($this->getTable(), $ids, $fields);
+        $response = $this->getConnection()
+                       ->getDriver()
+                       ->getRestClient()
+                       ->getCompositeClient()
+                       ->read($this->getTable(), $ids, $fields);
 
         return collection($response)->map(function (CompositeSObject $item) {
             return $this->marshaller()->one($item->getFields());
-            //return $this->newEntity($item->getFields());
         })->toArray();
     }
 

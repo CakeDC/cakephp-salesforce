@@ -88,7 +88,7 @@ class SalesforceTable extends Table
                 // For lack of anything better...
                 $field = 'id';
             }
-            $entity->setErrors($field, $errors->message);
+            $entity->setError($field, $errors->message);
         }
 
         return $success;

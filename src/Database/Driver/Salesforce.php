@@ -28,6 +28,7 @@ use Salesforce\Database\SalesforceQueryCompiler;
 use Salesforce\Database\SalesforceQuery;
 use Salesforce\Database\Statement\SalesforceStatement;
 use Cake\Database\Driver;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class Salesforce extends Driver
 {
@@ -155,7 +156,7 @@ class Salesforce extends Driver
                     $this->_config['password'],
                     $matches[1]
                 ),
-                $matches[2],
+                $matches[2]
             );
 
         }
