@@ -47,7 +47,7 @@ class SalesforceSchema extends BaseSchema
     }
 
     /**
-     * Custom function that queries the datasource for the table list as SQL doesn't accept
+     * Custom function that queries the datasource for the table list as SOQL doesn't accept
      * DESCRIBE functionality
      */
     public function describeColumn($tableName, $config)
