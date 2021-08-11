@@ -1,12 +1,11 @@
 <?php
-
 use Cake\Cache\Cache;
 
-Cache::config('salesforce', [
-    'className' => 'Cake\Cache\Engine\FileEngine',
-    'duration' => '+1 hours',
-    'probability' => 100,
-    'path' => CACHE . 'salesforce' . DS,
-]);
-
-?>
+if (Cache::getConfig('salesforce') === null) {
+    Cache::setConfig('salesforce', [
+        'className' => 'Cake\Cache\Engine\FileEngine',
+        'duration' => '+1 hours',
+        'probability' => 100,
+        'path' => CACHE . 'salesforce' . DS,
+    ]);
+}
