@@ -6,7 +6,7 @@
     "license": "MIT",
     "require": {
         "php": ">=7.4",
-        "cakephp/cakephp": "^4.0"
+        "cakephp/cakephp": "^4.0",
         "ae/salesforce-rest-sdk": "^2.0",
         "developerforce/force.com-toolkit-for-php": "^1.0@dev"
     },
