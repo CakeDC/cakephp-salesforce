@@ -75,14 +75,14 @@ class SalesforceStatement extends StatementDecorator
                     $header = new AssignmentRuleHeader(null, true);    // run the default lead assignment rule
                     $this->_driver->client->setAssignmentRuleHeader($header);
                 }
-                $results = $this->_driver->client->create([$object], $this->_statement->repository()->name);
+                $results = $this->_driver->client->create([$object], $this->_statement->getRepository()->name);
                 if (is_object($results)) {
                     trigger_error('Unexpected object results', E_USER_ERROR);
                 }
                 $result = new \stdClass();
                 if ($results[0]->success) {
                     $result->size = 1;
-                    $this->_last_insert_id[$this->_statement->repository()->name] = $results[0]->id;
+                    $this->_last_insert_id[$this->_statement->getRepository()->name] = $results[0]->id;
                 } else {
                     $result->size = 0;
                     $this->_driver->errors = $results[0]->errors;
