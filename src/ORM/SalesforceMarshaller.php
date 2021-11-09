@@ -15,9 +15,11 @@
 
 namespace Salesforce\ORM;
 
+use Cake\Database\TypeFactory;
 use Cake\Datasource\EntityInterface;
 use Cake\Datasource\InvalidPropertyInterface;
 use Cake\ORM\Marshaller;
+use Cake\ORM\PropertyMarshalInterface;
 use Salesforce\Database\SalesforceType;
 
 /**
@@ -95,5 +97,77 @@ class SalesforceMarshaller extends Marshaller
         $entity->setErrors($errors);
 
         return $entity;
+    }
+
+    protected function _buildPropertyMap(array $data, array $options): array
+    {
+        SalesforceType::reset();
+        $map = [];
+        $schema = $this->_table->getSchema();
+
+        // Is a concrete column?
+        foreach (array_keys($data) as $prop) {
+            $prop = (string)$prop;
+            $columnType = $schema->getColumnType($prop);
+            if ($columnType) {
+                $map[$prop] = function ($value, $entity) use ($columnType) {
+                    return SalesforceType::build($columnType)->marshal($value);
+                };
+            }
+        }
+
+        // Map associations
+        if (!isset($options['associated'])) {
+            $options['associated'] = [];
+        }
+        $include = $this->_normalizeAssociations($options['associated']);
+        foreach ($include as $key => $nested) {
+            if (is_int($key) && is_scalar($nested)) {
+                $key = $nested;
+                $nested = [];
+            }
+            // If the key is not a special field like _ids or _joinData
+            // it is a missing association that we should error on.
+            if (!$this->_table->hasAssociation($key)) {
+                if (substr($key, 0, 1) !== '_') {
+                    throw new InvalidArgumentException(sprintf(
+                        'Cannot marshal data for "%s" association. It is not associated with "%s".',
+                        (string)$key,
+                        $this->_table->getAlias()
+                    ));
+                }
+                continue;
+            }
+            $assoc = $this->_table->getAssociation($key);
+
+            if (isset($options['forceNew'])) {
+                $nested['forceNew'] = $options['forceNew'];
+            }
+            if (isset($options['isMerge'])) {
+                $callback = function ($value, $entity) use ($assoc, $nested) {
+                    /** @var \Cake\Datasource\EntityInterface $entity */
+                    $options = $nested + ['associated' => [], 'association' => $assoc];
+
+                    return $this->_mergeAssociation($entity->get($assoc->getProperty()), $assoc, $value, $options);
+                };
+            } else {
+                $callback = function ($value, $entity) use ($assoc, $nested) {
+                    $options = $nested + ['associated' => []];
+
+                    return $this->_marshalAssociation($assoc, $value, $options);
+                };
+            }
+            $map[$assoc->getProperty()] = $callback;
+        }
+
+        $behaviors = $this->_table->behaviors();
+        foreach ($behaviors->loaded() as $name) {
+            $behavior = $behaviors->get($name);
+            if ($behavior instanceof PropertyMarshalInterface) {
+                $map += $behavior->buildMarshalMap($this, $map, $options);
+            }
+        }
+
+        return $map;
     }
 }

@@ -37,8 +37,8 @@ class SalesforceType extends Type
         'biginteger' => 'Cake\Database\Type\IntegerType',
         'binary' => 'Cake\Database\Type\BinaryType',
         'boolean' => 'Cake\Database\Type\BoolType',
-        'date' => 'Cake\Database\Type\DateType',
-        'datetime' => 'Cake\Database\Type\DateTimeType',
+        'date' => 'Salesforce\Database\Type\SalesforceDateType',
+        'datetime' => 'Salesforce\Database\Type\SalesforceDateTimeType',
         'decimal' => 'Cake\Database\Type\FloatType',
         'float' => 'Cake\Database\Type\FloatType',
         'integer' => 'Cake\Database\Type\IntegerType',
@@ -80,5 +80,10 @@ class SalesforceType extends Type
         }
 
         return static::$_builtTypes[$name] = new static::$_types[$name]($name);
+    }
+
+    public static function reset(): void
+    {
+        static::$_builtTypes = [];
     }
 }
