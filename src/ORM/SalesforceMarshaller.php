@@ -101,7 +101,6 @@ class SalesforceMarshaller extends Marshaller
 
     protected function _buildPropertyMap(array $data, array $options): array
     {
-        SalesforceType::reset();
         $map = [];
         $schema = $this->_table->getSchema();
 

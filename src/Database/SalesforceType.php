@@ -33,7 +33,7 @@ class SalesforceType extends Type
      *
      * @var array
      */
-    protected static $_types = [
+    protected static $_typesMap = [
         'biginteger' => 'Cake\Database\Type\IntegerType',
         'binary' => 'Cake\Database\Type\BinaryType',
         'boolean' => 'Cake\Database\Type\BoolType',
@@ -65,25 +65,109 @@ class SalesforceType extends Type
     ];
 
     /**
+     * Contains a map of type object instances to be reused if needed.
+     *
+     * @var \Cake\Database\TypeInterface[]
+     */
+    protected static $_builtSalesforceTypes = [];
+
+    /**
      * {@inheritDoc}
      */
     public static function build(string $name): TypeInterface
     {
-        //force rebuild of string type
-        if ($name != "string") {
-            if (isset(static::$_builtTypes[$name])) {
-                return static::$_builtTypes[$name];
+        //force rebuild of string and dates type
+        if (!in_array($name, ['string', 'date', 'datetime'])) {
+            if (isset(static::$_builtSalesforceTypes[$name])) {
+                return static::$_builtSalesforceTypes[$name];
             }
-            if (!isset(static::$_types[$name])) {
+            if (!isset(static::$_typesMap[$name])) {
                 throw new InvalidArgumentException(sprintf('Unknown type "%s"', $name));
             }
         }
 
-        return static::$_builtTypes[$name] = new static::$_types[$name]($name);
+        return static::$_builtSalesforceTypes[$name] = new static::$_typesMap[$name]($name);
     }
 
-    public static function reset(): void
+
+    /**
+     * Returns an arrays with all the mapped type objects, indexed by name.
+     *
+     * @return \Cake\Database\TypeInterface[]
+     */
+    public static function buildAll(): array
     {
-        static::$_builtTypes = [];
+        $result = [];
+        foreach (static::$_typesMap as $name => $type) {
+            $result[$name] = static::$_builtSalesforceTypes[$name] ?? static::build($name);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Set TypeInterface instance capable of converting a type identified by $name
+     *
+     * @param string $name The type identifier you want to set.
+     * @param \Cake\Database\TypeInterface $instance The type instance you want to set.
+     * @return void
+     */
+    public static function set(string $name, TypeInterface $instance): void
+    {
+        static::$_builtSalesforceTypes[$name] = $instance;
+        static::$_typesMap[$name] = get_class($instance);
+    }
+
+    /**
+     * Registers a new type identifier and maps it to a fully namespaced classname.
+     *
+     * @param string $type Name of type to map.
+     * @param string $className The classname to register.
+     * @return void
+     * @psalm-param class-string<\Cake\Database\TypeInterface> $className
+     */
+    public static function map(string $type, string $className): void
+    {
+        static::$_typesMap[$type] = $className;
+        unset(static::$_builtSalesforceTypes[$type]);
+    }
+
+    /**
+     * Set type to classname mapping.
+     *
+     * @param string[] $map List of types to be mapped.
+     * @return void
+     * @psalm-param array<string, class-string<\Cake\Database\TypeInterface>> $map
+     */
+    public static function setMap(array $map): void
+    {
+        static::$_typesMap = $map;
+        static::$_builtSalesforceTypes = [];
+    }
+
+    /**
+     * Get mapped class name for given type or map array.
+     *
+     * @param string|null $type Type name to get mapped class for or null to get map array.
+     * @return string[]|string|null Configured class name for given $type or map array.
+     */
+    public static function getMap(?string $type = null)
+    {
+        if ($type === null) {
+            return static::$_typesMap;
+        }
+
+        return static::$_typesMap[$type] ?? null;
+    }
+
+    /**
+     * Clears out all created instances and mapped types classes, useful for testing
+     *
+     * @return void
+     */
+    public static function clear(): void
+    {
+        static::$_typesMap = [];
+        static::$_builtSalesforceTypes = [];
     }
 }
