@@ -166,7 +166,11 @@ class SalesforceStatement extends StatementDecorator
                 return (float)$binding['value'];
             case 'datetime':
             case 'date':
-                $ret = (string)$binding['value'];
+				if (is_string($binding['value'])) {
+					$ret = $binding['value'];
+				} else {
+					$ret = $binding['value'] ? $binding['value']->toIso8601String() : '';
+				}
                 break;
             case 'string':
                 $ret = trim($binding['value']);
