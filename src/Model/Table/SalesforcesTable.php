@@ -197,6 +197,9 @@ class SalesforcesTable extends SalesforceTable
     {
         $object = new CompositeSObject($this->getTable());
         foreach ($entity->extract($entity->getDirty()) as $name => $value) {
+            if (is_object($value) && method_exists($value, 'toIso8601String')) {
+                $value = $value->toIso8601String();
+            }
             $object->{$name} = $value;
         }
         if ($includeId) {
@@ -262,7 +265,9 @@ class SalesforcesTable extends SalesforceTable
                        ->read($this->getTable(), $ids, $fields);
 
         return collection($response)->map(function (CompositeSObject $item) {
-            return $this->marshaller()->one($item->getFields());
+            $entity = $this->marshaller()->one($item->getFields());
+            $entity->clean();
+            return $entity;
         })->toArray();
     }
 
