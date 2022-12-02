@@ -49,7 +49,7 @@ class SalesforcesTable extends SalesforceTable
         $this->setDisplayField('Id');
         $this->setPrimaryKey('Id');
 
-        if (!empty($config['connection']->config()['my_wsdl'])) {
+        if (!empty($config['connection']) && !empty($config['connection']->config()['my_wsdl'])) {
             $wsdl = CONFIG . DS . $config['connection']->config()['my_wsdl'];
         } else {
             throw new Exception('You need to provide a WSDL');
