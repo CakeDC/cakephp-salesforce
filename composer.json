@@ -7,7 +7,7 @@
     "require": {
         "php": "^8.2",
         "cakephp/cakephp": "^4.0",
-        "ae/salesforce-rest-sdk": "dev-feature/php8.2",
+        "codegenus/salesforce-rest-sdk": "dev-feature/php8.2",
         "developerforce/force.com-toolkit-for-php": "^1.0@dev"
     },
     "require-dev": {
