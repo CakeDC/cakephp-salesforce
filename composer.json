@@ -5,7 +5,7 @@
     "homepage": "https://github.com/voycey/cakephp-salesforce",
     "license": "MIT",
     "require": {
-        "php": "8.2",
+        "php": "^8.2",
         "cakephp/cakephp": "^4.0",
         "ae/salesforce-rest-sdk": "dev-feature/php8.2",
         "developerforce/force.com-toolkit-for-php": "^1.0@dev"
