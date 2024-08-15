@@ -15,6 +15,8 @@
 
 namespace Salesforce\ORM;
 
+use Cake\Database\ValueBinder;
+use Cake\Datasource\ResultSetInterface;
 use Cake\ORM\Query\UpdateQuery;
 use Salesforce\ORM\Traits\SalesforceQueryTrait;
 
@@ -28,4 +30,19 @@ use Salesforce\ORM\Traits\SalesforceQueryTrait;
 class SalesforceUpdateQuery extends UpdateQuery
 {
     use SalesforceQueryTrait;
+
+    /**
+     * @inheritDoc
+     */
+    public function sql(?ValueBinder $binder = null): string {
+        return $this->customSql($binder);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function _execute(): ResultSetInterface
+    {
+        return $this->customExecute();
+    }
 }
