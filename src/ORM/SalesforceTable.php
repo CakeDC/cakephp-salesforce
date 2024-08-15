@@ -19,6 +19,10 @@ use \ArrayObject;
 use Cake\Datasource\EntityInterface;
 use Cake\ORM\Marshaller;
 use Cake\ORM\Query;
+use Cake\ORM\Query\DeleteQuery;
+use Cake\ORM\Query\InsertQuery;
+use Cake\ORM\Query\SelectQuery;
+use Cake\ORM\Query\UpdateQuery;
 use Cake\ORM\Table;
 
 class SalesforceTable extends Table
@@ -32,16 +36,56 @@ class SalesforceTable extends Table
     }
 
     /**
+     * Creates a new DeleteQuery instance for a table.
+     *
+     * @return \Cake\ORM\Query\DeleteQuery
+     */
+    public function deleteQuery(): DeleteQuery
+    {
+        return new SalesforceDeleteQuery($this->getConnection(), $this);
+    }
+
+    /**
+     * Creates a new InsertQuery instance for a table.
+     *
+     * @return \Cake\ORM\Query\InsertQuery
+     */
+    public function insertQuery(): InsertQuery
+    {
+        return new SalesforceInsertQuery($this->getConnection(), $this);
+    }
+
+    /**
+     * Creates a new SelectQuery instance for a table.
+     *
+     * @return \Cake\ORM\Query\SelectQuery
+     */
+    public function selectQuery(): SelectQuery
+    {
+        return new SalesforceSelectQuery($this->getConnection(), $this);
+    }
+
+    /**
+     * Creates a new UpdateQuery instance for a table.
+     *
+     * @return \Cake\ORM\Query\UpdateQuery
+     */
+    public function updateQuery(): UpdateQuery
+    {
+        return new SalesforceUpdateQuery($this->getConnection(), $this);
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function exists($conditions): bool
     {
-        return (bool)count($this->find('all')
-                                ->select(['Id'])
-                                ->where($conditions)
-                                ->limit(1)
-                                ->enableHydration(false)
-                                ->toArray());
+        return (bool)count($this->find()
+            ->select(['Id'])
+            ->where($conditions)
+            ->limit(1)
+            ->enableHydration(false)
+            ->toArray());
     }
 
     /**
