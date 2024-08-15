@@ -21,6 +21,11 @@ class SalesforceDeleteQuery extends DeleteQuery
      * @inheritDoc
      */
     public function sql(?ValueBinder $binder = null): string {
+        if ($this->_type === 'delete' && empty($this->_parts['from'])) {
+            $repository = $this->getRepository();
+            $this->from([$repository->getAlias() => $repository->getTable()]);
+        }
+
         return $this->customSql($binder);
     }
 

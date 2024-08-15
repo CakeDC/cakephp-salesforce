@@ -35,6 +35,11 @@ class SalesforceUpdateQuery extends UpdateQuery
      * @inheritDoc
      */
     public function sql(?ValueBinder $binder = null): string {
+        if ($this->_type === 'update' && empty($this->_parts['update'])) {
+            $repository = $this->getRepository();
+            $this->update($repository->getTable());
+        }
+
         return $this->customSql($binder);
     }
 
